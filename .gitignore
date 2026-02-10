@@ -1,0 +1,25 @@
+# Env and secrets
+.env
+credentials.json
+*.pyc
+__pycache__/
+.venv/
+venv/
+.env.local
+
+# Build and IDE
+dist/
+build/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

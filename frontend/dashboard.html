@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="/">
+  <title>Dashboard – Marlowe</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+  <div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+      <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/menu.html"><span class="sidebar-brand-text mx-3">Marlowe</span></a>
+      <hr class="sidebar-divider">
+      <li class="nav-item"><a class="nav-link" href="/menu.html"><i class="fas fa-home"></i> Home</a></li>
+      <li class="nav-item"><a class="nav-link" href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" href="/controls.html"><i class="fas fa-list"></i> Controls</a></li>
+      <li class="nav-item"><a class="nav-link" href="/assessments.html"><i class="fas fa-clipboard-check"></i> Assessments</a></li>
+      <li class="nav-item"><a class="nav-link" href="/documents.html"><i class="fas fa-file-alt"></i> Documents</a></li>
+      <li class="nav-item"><a class="nav-link" href="/knowledge-graph.html"><i class="fas fa-project-diagram"></i> Knowledge Graph</a></li>
+      <li class="nav-item"><a class="nav-link" href="/reports.html"><i class="fas fa-chart-bar"></i> Reports</a></li>
+      <li class="nav-item"><a class="nav-link" href="/chat.html"><i class="fas fa-comments"></i> Chat</a></li>
+      <li class="nav-item"><a class="nav-link" href="/faq.html"><i class="fas fa-question-circle"></i> FAQ</a></li>
+      <li class="nav-item"><a class="nav-link" href="/help.html"><i class="fas fa-info-circle"></i> Help</a></li>
+      <hr class="sidebar-divider">
+      <li class="nav-item"><a class="nav-link" href="/login.html"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+    </ul>
+    <div id="content-wrapper" class="d-flex flex-column">
+      <div id="content">
+        <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top"><h1 class="h3 mb-0 text-gray-800">Dashboard</h1></nav>
+        <div class="container-fluid">
+          <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-3">
+              <div class="card border-left-primary h-100 py-2">
+                <div class="card-body">
+                  <div class="row align-items-center">
+                    <div class="col">
+                      <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">API Status</div>
+                      <div class="h5 mb-0 font-weight-bold text-gray-800" id="healthStatus">—</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-heartbeat fa-2x text-gray-300"></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+              <div class="card border-left-success h-100 py-2">
+                <div class="card-body">
+                  <div class="row align-items-center">
+                    <div class="col">
+                      <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Frameworks</div>
+                      <div class="h5 mb-0 font-weight-bold text-gray-800" id="frameworksCount">—</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-book fa-2x text-gray-300"></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+              <div class="card border-left-info h-100 py-2">
+                <div class="card-body">
+                  <div class="row align-items-center">
+                    <div class="col">
+                      <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Requirements</div>
+                      <div class="h5 mb-0 font-weight-bold text-gray-800" id="requirementsCount">—</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-list-check fa-2x text-gray-300"></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+              <div class="card border-left-warning h-100 py-2">
+                <div class="card-body">
+                  <div class="row align-items-center">
+                    <div class="col">
+                      <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Assessments</div>
+                      <div class="h5 mb-0 font-weight-bold text-gray-800" id="assessmentsCount">—</div>
+                    </div>
+                    <div class="col-auto"><i class="fas fa-clipboard-check fa-2x text-gray-300"></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-lg-6 mb-4">
+              <div class="card shadow">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Quick actions</h6></div>
+                <div class="card-body">
+                  <a href="/controls.html" class="d-block mb-2"><i class="fas fa-list me-2"></i>Browse requirements / controls</a>
+                  <a href="/assessments.html" class="d-block mb-2"><i class="fas fa-clipboard-check me-2"></i>View assessments</a>
+                  <a href="/documents.html" class="d-block mb-2"><i class="fas fa-file-alt me-2"></i>Upload documents</a>
+                  <a href="/chat.html" class="d-block mb-2"><i class="fas fa-comments me-2"></i>AI Chat</a>
+                  <a href="/knowledge-graph.html" class="d-block"><i class="fas fa-project-diagram me-2"></i>Knowledge graph</a>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+              <div class="card shadow">
+                <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">About Marlowe</h6></div>
+                <div class="card-body">
+                  <p class="mb-0">Marlowe supports <strong>AI governance</strong>, responsible AI, privacy, and global regulations. Use frameworks (e.g. EU AI Act, GDPR, NIST AI RMF), run assessments, attach evidence, and explore the knowledge graph. Framework-agnostic.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/sb-admin-2.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    (async function() {
+      try {
+        var h = await apiGet('health');
+        document.getElementById('healthStatus').textContent = (h && h.status === 'ok') ? 'OK' : 'Unknown';
+      } catch (e) {
+        document.getElementById('healthStatus').textContent = 'Offline';
+      }
+      try {
+        var f = await apiGet('frameworks');
+        document.getElementById('frameworksCount').textContent = Array.isArray(f) ? f.length : 0;
+      } catch (e) {
+        document.getElementById('frameworksCount').textContent = '—';
+      }
+      try {
+        var r = await apiGet('requirements');
+        document.getElementById('requirementsCount').textContent = Array.isArray(r) ? r.length : 0;
+      } catch (e) {
+        document.getElementById('requirementsCount').textContent = '—';
+      }
+      try {
+        var a = await apiGet('assessments');
+        document.getElementById('assessmentsCount').textContent = Array.isArray(a) ? a.length : 0;
+      } catch (e) {
+        document.getElementById('assessmentsCount').textContent = '—';
+      }
+    })();
+  </script>
+</body>
+</html>
