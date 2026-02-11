@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models import Framework
 from app.schemas import FrameworkCreate, FrameworkRead, FrameworkUpdate
+from app.services.graph_sync import delete_framework_from_neo4j, sync_framework_to_neo4j
 
 router = APIRouter()
 
@@ -32,6 +33,10 @@ async def create_framework(
     db.add(framework)
     await db.flush()
     await db.refresh(framework)
+    await sync_framework_to_neo4j(
+        framework.id, framework.name, framework.slug,
+        framework.description, framework.region, framework.framework_type,
+    )
     return framework
 
 
@@ -63,6 +68,10 @@ async def update_framework(
         setattr(framework, k, v)
     await db.flush()
     await db.refresh(framework)
+    await sync_framework_to_neo4j(
+        framework.id, framework.name, framework.slug,
+        framework.description, framework.region, framework.framework_type,
+    )
     return framework
 
 
@@ -76,5 +85,6 @@ async def delete_framework(
     framework = result.scalar_one_or_none()
     if framework is None:
         raise HTTPException(status_code=404, detail="Framework not found")
+    await delete_framework_from_neo4j(framework_id)
     await db.delete(framework)
     await db.flush()

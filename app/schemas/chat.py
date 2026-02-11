@@ -8,6 +8,7 @@ class ChatRequest(BaseModel):
 
     message: str = Field(..., min_length=1, max_length=10000)
     context_document_ids: list[str] = Field(default_factory=list, max_length=20)
+    model: str | None = Field(None, description="Ollama model to use (e.g. llama3.2); default from config")
 
 
 class ChatResponse(BaseModel):

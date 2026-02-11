@@ -1,5 +1,7 @@
 # Marlowe – backend, frontend, postgres, redis, qdrant, neo4j
 # Ollama and MinIO run on host; backend uses host.docker.internal to reach them.
+# Host ports 5010–5016 to avoid clash with Docling (5001) and other stacks.
+# 5010=backend, 5011=frontend, 5012=postgres, 5013=redis, 5014=qdrant, 5015=neo4j http, 5016=neo4j bolt.
 # Use: docker compose up -d
 
 services:
@@ -8,7 +10,7 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "4000:8000"
+      - "5010:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://marlowe:marlowe@postgres:5432/marlowe
       - REDIS_URL=redis://redis:6379/0
@@ -45,7 +47,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "4006:80"
+      - "5011:80"
     depends_on:
       - backend
 
@@ -58,7 +60,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5012:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U marlowe -d marlowe"]
       interval: 5s
@@ -68,12 +70,12 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "5013:6379"
 
   qdrant:
     image: qdrant/qdrant:latest
     ports:
-      - "6333:6333"
+      - "5014:6333"
     volumes:
       - qdrant_data:/qdrant/storage
 
@@ -82,8 +84,8 @@ services:
     environment:
       NEO4J_AUTH: neo4j/password
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "5015:7474"
+      - "5016:7687"
     volumes:
       - neo4j_data:/data
 

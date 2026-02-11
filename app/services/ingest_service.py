@@ -1,7 +1,8 @@
 """Ingest documents from a folder into Qdrant: extract text (Docling), chunk, embed (Ollama), upsert."""
 
-import hashlib
+import io
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -49,10 +50,10 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
     return chunks
 
 
-def _stable_point_id(source_path: str, chunk_index: int) -> str:
-    """Stable ID for upsert (re-ingestion replaces points)."""
+def _stable_point_id(source_path: str, chunk_index: int) -> uuid.UUID:
+    """Stable UUID for upsert (re-ingestion replaces points). Qdrant accepts UUID or int only."""
     key = f"{source_path}:{chunk_index}"
-    return hashlib.sha256(key.encode()).hexdigest()[:24]
+    return uuid.uuid5(uuid.NAMESPACE_DNS, key)
 
 
 def _resolve_docs_path() -> Path:
@@ -92,6 +93,45 @@ def _extract_text_from_path(file_path: Path, ext: str) -> str:
     if ext in TEXT_EXTENSIONS:
         return file_path.read_text(encoding="utf-8", errors="replace")
     return extract_text_from_file(file_path=file_path)
+
+
+async def ingest_single_file(file_content: bytes, filename: str) -> dict[str, Any]:
+    """
+    Ingest one document (bytes + filename) into Qdrant: extract, chunk, embed, upsert.
+    Returns {"ok": True, "filename": str, "chunks": int} or {"ok": False, "error": str}.
+    """
+    ext = Path(filename).suffix.lower()
+    if ext not in INGEST_EXTENSIONS:
+        return {"ok": False, "error": f"Unsupported extension: {ext}"}
+    try:
+        if ext in TEXT_EXTENSIONS:
+            text = file_content.decode("utf-8", errors="replace")
+        else:
+            text = extract_text_from_file(file_obj=io.BytesIO(file_content), filename_hint=filename)
+    except Exception as e:
+        logger.exception("Extract failed for %s", filename)
+        return {"ok": False, "error": f"Extraction failed: {e!s}"}
+    chunks = _chunk_text(text)
+    if not chunks:
+        return {"ok": True, "filename": filename, "chunks": 0}
+    vectors = await _embed_chunks(chunks)
+    if len(vectors) != len(chunks):
+        return {"ok": False, "error": "Embedding count mismatch"}
+    ensure_collection(vector_size=settings.embedding_dimension)
+    client = get_qdrant_client()
+    collection = settings.qdrant_collection
+    source_path = filename
+    points = [
+        PointStruct(
+            id=_stable_point_id(source_path, i),
+            vector=vec,
+            payload={"source": source_path, "chunk_index": i, "text": chunks[i][:2000]},
+        )
+        for i, vec in enumerate(vectors)
+    ]
+    upsert_points(collection, points, client=client)
+    logger.info("Ingested single file %s: %d chunks", filename, len(points))
+    return {"ok": True, "filename": filename, "chunks": len(points)}
 
 
 async def ingest_docs(path_override: str | None = None) -> dict[str, Any]:

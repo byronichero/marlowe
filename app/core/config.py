@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # CORS
-    cors_origins: List[str] = ["http://localhost:4006", "http://localhost:3000", "http://127.0.0.1:4006"]
+    cors_origins: List[str] = ["http://localhost:5011", "http://localhost:5002", "http://localhost:4006", "http://localhost:3000", "http://127.0.0.1:5011"]
 
     # PostgreSQL
     database_url: str = "postgresql+asyncpg://marlowe:marlowe@localhost:5432/marlowe"

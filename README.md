@@ -2,6 +2,8 @@
 
 AI application for **AI governance**, **responsible AI**, **privacy**, and **global AI regulations**. Supports compliance, assessments, and evidence across frameworks (e.g. EU AI Act, GDPR, NIST AI RMF)—framework-agnostic.
 
+The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Christopher_Marlowe)—Elizabethan playwright, poet, and contemporary of Shakespeare—whose work combined sharp structure, craft, and a touch of intrigue.
+
 ## Stack
 
 - **Backend:** Python 3.10+, FastAPI, async
@@ -31,27 +33,39 @@ AI application for **AI governance**, **responsible AI**, **privacy**, and **glo
    docker compose build --no-cache frontend && docker compose up -d
    ```
 
-4. Backend: http://localhost:4000  
-   API docs: http://localhost:4000/docs  
-   Frontend: http://localhost:4006
+4. **URLs (host ports 5010–5016, avoids Docling on 5001):**  
+   Frontend: http://localhost:5011  
+   Backend API: http://localhost:5010  
+   API docs: http://localhost:5010/docs  
+   Neo4j browser: http://localhost:5015 (bolt on 5016)
+
+   | Port | Service    |
+   |------|------------|
+   | 5010 | Backend    |
+   | 5011 | Frontend   |
+   | 5012 | Postgres   |
+   | 5013 | Redis      |
+   | 5014 | Qdrant     |
+   | 5015 | Neo4j HTTP |
+   | 5016 | Neo4j Bolt |
 
 ## Local development (backend only)
 
 - Use a venv and install with `uv pip install -e ".[dev]"` or `pip install -e ".[dev]"`.
-- Run Postgres, Redis, Qdrant, Neo4j via Docker Compose (e.g. `docker compose up -d postgres redis qdrant neo4j`). Postgres is mapped to host port **5433** to avoid conflict with a local Postgres on 5432.
-- Point `.env` at local services; for DB from host use `postgresql+asyncpg://marlowe:marlowe@localhost:5433/marlowe`; set `OLLAMA_HOST` and MinIO endpoint to host where those run.
+- Run Postgres, Redis, Qdrant, Neo4j via Docker Compose (e.g. `docker compose up -d postgres redis qdrant neo4j`). All host ports are 5010–5016 (see `docker-compose.yml`).
+- Point `.env` at local services; for DB from host use `postgresql+asyncpg://marlowe:marlowe@localhost:5012/marlowe`; Redis `localhost:5013`, Qdrant `localhost:5014`; set `OLLAMA_HOST` and MinIO endpoint to host where those run.
 - Start backend: `uvicorn app.main:app --reload`.
 
 ## Ingesting docs into Qdrant
 
-The `docs/` folder (PDFs, DOCX, .md, etc.) can be ingested into Qdrant so **AI Chat** and search use them as context.
+The `docs/` folder (PDFs, DOCX, .md, etc.) can be ingested into Qdrant so **AI Chat** and search use them as context. Via the UI (AI Knowledge Base → Upload), single-file uploads are limited to **100 MB** (nginx `client_max_body_size`); increase in `docker/nginx.conf` if needed.
 
 1. **Ollama**: Pull the embedding model (required for ingestion and RAG):
    ```bash
    ollama pull nomic-embed-text
    ```
 2. **API** (with stack running):  
-   `POST http://localhost:4000/api/v1/documents/ingest`  
+   `POST http://localhost:5010/api/v1/documents/ingest`  
    Optionally pass `?path=docs` to override the path. The backend container has `./docs` mounted at `/app/docs`.
 3. **CLI** (from project root, with backend deps available):
    ```bash
@@ -60,6 +74,14 @@ The `docs/` folder (PDFs, DOCX, .md, etc.) can be ingested into Qdrant so **AI C
    ```
    In Docker: `docker compose exec backend python -m app.scripts.ingest_docs`
 4. After ingestion, **Chat** uses retrieved chunks from Qdrant automatically when answering.
+
+## Knowledge graph (Neo4j)
+
+Frameworks and requirements are synced from Postgres to Neo4j when you create or update them via the API. For existing data, use **Sync from DB** on the Knowledge Graph page, or `POST /api/v1/graph/sync`. The graph UI (vis-network) shows frameworks and requirements and **BELONGS_TO** edges; pan and zoom to explore.
+
+## Ollama model picker
+
+**Chat** lets users choose an Ollama model from a dropdown. The list is loaded from `GET /api/v1/ollama/models` (Ollama’s `/api/tags`). Send the selected model in the chat request body as `model`; the reply includes `model_used`.
 
 ## Project structure
 

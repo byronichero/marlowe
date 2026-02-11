@@ -18,7 +18,7 @@ async def chat_with_context(
     context_document_ids: list[str] | None = None,  # reserved for future per-doc filter
     model: str | None = None,
     use_rag: bool = True,
-) -> str:
+) -> tuple[str, str | None]:
     """
     Send user message to Ollama. When use_rag is True, embed the message, search Qdrant
     for relevant chunks, and prepend them as context to the prompt.
@@ -49,4 +49,6 @@ async def chat_with_context(
                         prompt = f"Use the following excerpts from our documentation when relevant:\n\n{context}\n\n---\n\nQuestion: {message}"
         except Exception as e:
             logger.warning("RAG retrieval failed, continuing without context: %s", e)
-    return await ollama_chat(prompt, model=model)
+    used_model = model or settings.ollama_model
+    reply = await ollama_chat(prompt, model=used_model)
+    return reply, used_model

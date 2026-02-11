@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models import Requirement
 from app.schemas import RequirementCreate, RequirementRead, RequirementUpdate
+from app.services.graph_sync import delete_requirement_from_neo4j, sync_requirement_to_neo4j
 
 router = APIRouter()
 
@@ -43,6 +44,10 @@ async def create_requirement(
     db.add(requirement)
     await db.flush()
     await db.refresh(requirement)
+    await sync_requirement_to_neo4j(
+        requirement.id, requirement.framework_id, requirement.identifier, requirement.title,
+        requirement.description, requirement.level, requirement.family,
+    )
     return requirement
 
 
@@ -74,6 +79,10 @@ async def update_requirement(
         setattr(req, k, v)
     await db.flush()
     await db.refresh(req)
+    await sync_requirement_to_neo4j(
+        req.id, req.framework_id, req.identifier, req.title,
+        req.description, req.level, req.family,
+    )
     return req
 
 
@@ -87,5 +96,6 @@ async def delete_requirement(
     req = result.scalar_one_or_none()
     if req is None:
         raise HTTPException(status_code=404, detail="Requirement not found")
+    await delete_requirement_from_neo4j(requirement_id)
     await db.delete(req)
     await db.flush()

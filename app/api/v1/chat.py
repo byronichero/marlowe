@@ -10,9 +10,10 @@ router = APIRouter()
 
 @router.post("", response_model=ChatResponse)
 async def chat(payload: ChatRequest) -> ChatResponse:
-    """Send a message to the AI (Ollama); optional document context."""
-    reply = await chat_with_context(
+    """Send a message to the AI (Ollama); optional document context and model selection."""
+    reply, model_used = await chat_with_context(
         payload.message,
         context_document_ids=payload.context_document_ids or None,
+        model=payload.model,
     )
-    return ChatResponse(reply=reply, model_used=None)
+    return ChatResponse(reply=reply, model_used=model_used)

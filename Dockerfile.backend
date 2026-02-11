@@ -3,9 +3,19 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# System deps for Docling (optional but recommended)
+# System deps for Docling: OCR (Tesseract), OpenCV/table model (libxcb, libGL, X11)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    libxcb1 \
+    libxcb-xfixes0 \
+    libxcb-render0 \
+    libxcb-shm0 \
+    libxrender1 \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps (pyproject.toml references README.md)
@@ -15,8 +25,10 @@ RUN pip install --no-cache-dir -e .
 COPY app/ ./app/
 COPY database/ ./database/
 
-# Non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app
+# Non-root user: allow read/write of site-packages so Docling/rapidocr can load and cache models
+RUN useradd -m appuser \
+    && chown -R appuser:appuser /app \
+    && chown -R appuser:appuser /usr/local/lib/python3.12/site-packages
 USER appuser
 
 EXPOSE 8000

@@ -16,9 +16,8 @@
       <hr class="sidebar-divider">
       <li class="nav-item"><a class="nav-link" href="/menu.html"><i class="fas fa-home"></i> Home</a></li>
       <li class="nav-item"><a class="nav-link" href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-      <li class="nav-item"><a class="nav-link" href="/controls.html"><i class="fas fa-list"></i> Controls</a></li>
+      <li class="nav-item"><a class="nav-link" href="/ai-knowledge-base.html"><i class="fas fa-database"></i> AI Knowledge Base</a></li>
       <li class="nav-item"><a class="nav-link" href="/assessments.html"><i class="fas fa-clipboard-check"></i> Assessments</a></li>
-      <li class="nav-item"><a class="nav-link" href="/documents.html"><i class="fas fa-file-alt"></i> Documents</a></li>
       <li class="nav-item"><a class="nav-link" href="/knowledge-graph.html"><i class="fas fa-project-diagram"></i> Knowledge Graph</a></li>
       <li class="nav-item"><a class="nav-link" href="/reports.html"><i class="fas fa-chart-bar"></i> Reports</a></li>
       <li class="nav-item"><a class="nav-link" href="/chat.html"><i class="fas fa-comments"></i> Chat</a></li>
@@ -34,7 +33,14 @@
           <div class="card shadow mb-4">
             <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Ask about governance and compliance</h6></div>
             <div class="card-body">
-              <p class="text-muted small mb-3">Questions are sent to Ollama. Optionally use document context when available.</p>
+              <p class="text-muted small mb-3">Questions are sent to Ollama. Pick a model below; document context is used when available.</p>
+              <div class="mb-3">
+                <label class="form-label">Model</label>
+                <select class="form-select" id="chatModel" style="max-width: 280px;">
+                  <option value="">Default (from server)</option>
+                </select>
+                <span class="small text-muted ms-2" id="modelStatus"></span>
+              </div>
               <div class="mb-3">
                 <label class="form-label">Message</label>
                 <textarea class="form-control" id="chatMessage" rows="3" placeholder="e.g. What are key principles of the EU AI Act?"></textarea>
@@ -42,6 +48,7 @@
               </div>
               <h6 class="text-secondary mb-2">Reply</h6>
               <div id="chatReply" class="alert alert-light border" style="white-space: pre-wrap; min-height: 4rem;"></div>
+              <div id="modelUsed" class="small text-muted mt-1"></div>
             </div>
           </div>
         </div>
@@ -52,14 +59,36 @@
   <script src="/js/sb-admin-2.min.js"></script>
   <script src="/js/api.js"></script>
   <script>
+    (async function loadModels() {
+      var sel = document.getElementById('chatModel');
+      var status = document.getElementById('modelStatus');
+      try {
+        var models = await apiGet('ollama/models');
+        models.forEach(function(name) {
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          sel.appendChild(opt);
+        });
+        status.textContent = models.length ? models.length + ' model(s) from Ollama' : 'No models';
+      } catch (e) {
+        status.textContent = 'Could not load models';
+      }
+    })();
     document.getElementById('chatSend').onclick = async function() {
       var msg = document.getElementById('chatMessage').value.trim();
       var el = document.getElementById('chatReply');
+      var modelUsedEl = document.getElementById('modelUsed');
+      var model = document.getElementById('chatModel').value || null;
       if (!msg) return;
       el.textContent = 'Sending...';
+      modelUsedEl.textContent = '';
       try {
-        var r = await apiPost('chat', { message: msg, context_document_ids: [] });
+        var body = { message: msg, context_document_ids: [] };
+        if (model) body.model = model;
+        var r = await apiPost('chat', body);
         el.textContent = r.reply || '(no reply)';
+        if (r.model_used) modelUsedEl.textContent = 'Model: ' + r.model_used;
       } catch (e) {
         el.textContent = 'Error: ' + e.message;
       }

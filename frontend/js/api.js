@@ -1,4 +1,4 @@
-// API base URL – set via window.API_BASE. Default /api/v1 for nginx proxy; use http://localhost:4000/api/v1 when frontend and backend differ.
+// API base URL – set via window.API_BASE. Default /api/v1 for nginx proxy; use http://localhost:5010/api/v1 when frontend and backend differ.
 window.API_BASE = window.API_BASE || '/api/v1';
 
 function apiUrl(path) {

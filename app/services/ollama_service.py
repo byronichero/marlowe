@@ -26,6 +26,17 @@ async def ollama_chat(message: str, model: str | None = None) -> str:
     return data.get("message", {}).get("content", "")
 
 
+async def ollama_list_models() -> list[str]:
+    """Return list of available model names from Ollama (GET /api/tags)."""
+    url = f"{settings.ollama_host.rstrip('/')}/api/tags"
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+    models = data.get("models") or []
+    return [m.get("name", "") for m in models if m.get("name")]
+
+
 async def ollama_embeddings(text: str, model: str = "nomic-embed-text") -> list[float]:
     """Get embedding vector for text from Ollama."""
     url = f"{settings.ollama_host.rstrip('/')}/api/embeddings"

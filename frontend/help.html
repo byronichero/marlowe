@@ -16,9 +16,8 @@
       <hr class="sidebar-divider">
       <li class="nav-item"><a class="nav-link" href="/menu.html"><i class="fas fa-home"></i> Home</a></li>
       <li class="nav-item"><a class="nav-link" href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-      <li class="nav-item"><a class="nav-link" href="/controls.html"><i class="fas fa-list"></i> Controls</a></li>
+      <li class="nav-item"><a class="nav-link" href="/ai-knowledge-base.html"><i class="fas fa-database"></i> AI Knowledge Base</a></li>
       <li class="nav-item"><a class="nav-link" href="/assessments.html"><i class="fas fa-clipboard-check"></i> Assessments</a></li>
-      <li class="nav-item"><a class="nav-link" href="/documents.html"><i class="fas fa-file-alt"></i> Documents</a></li>
       <li class="nav-item"><a class="nav-link" href="/knowledge-graph.html"><i class="fas fa-project-diagram"></i> Knowledge Graph</a></li>
       <li class="nav-item"><a class="nav-link" href="/reports.html"><i class="fas fa-chart-bar"></i> Reports</a></li>
       <li class="nav-item"><a class="nav-link" href="/chat.html"><i class="fas fa-comments"></i> Chat</a></li>
@@ -37,9 +36,9 @@
               <p>Marlowe helps you manage <strong>AI governance</strong>, responsible AI, privacy, and global regulations in a framework-agnostic way. You can work with any standard (e.g. EU AI Act, GDPR, NIST AI RMF) without vendor lock-in.</p>
               <ul class="mb-0">
                 <li>Use the <a href="/dashboard.html">Dashboard</a> for an overview and quick links.</li>
-                <li>Add <strong>frameworks</strong> and <strong>requirements</strong> via the API or future admin UI; then browse them under <a href="/controls.html">Controls</a>.</li>
+                <li>Add <strong>frameworks</strong> and <strong>requirements</strong> via the API or future admin UI.</li>
                 <li>Create <strong>assessments</strong> and attach <strong>evidence</strong> to requirements.</li>
-                <li>Upload <strong>documents</strong>; they are parsed and can be searched and used in <a href="/chat.html">AI Chat</a>.</li>
+                <li>Use <a href="/ai-knowledge-base.html">AI Knowledge Base</a> to list and download files in the docs folder, and to upload and index new documents for <a href="/chat.html">AI Chat</a>.</li>
                 <li>Explore the <a href="/knowledge-graph.html">Knowledge graph</a> to see how frameworks, requirements, and assessments relate.</li>
               </ul>
             </div>
@@ -50,7 +49,7 @@
               <p class="mb-1"><strong>Frameworks & requirements</strong> — CRUD for frameworks (e.g. EU AI Act, GDPR) and their requirements; filter by level or family.</p>
               <p class="mb-1"><strong>Assessments</strong> — Track status and link to frameworks and organizations.</p>
               <p class="mb-1"><strong>Evidence</strong> — Attach files to requirements and assessments; stored in object storage.</p>
-              <p class="mb-1"><strong>Documents</strong> — Upload PDF, DOCX, etc.; content is extracted and indexed for search and AI.</p>
+              <p class="mb-1"><strong>AI Knowledge Base</strong> — List and download docs in the docs folder; upload and index PDF, DOCX, etc. for search and AI Chat.</p>
               <p class="mb-1"><strong>AI Chat</strong> — Ask questions; answers can use your documents and framework data.</p>
               <p class="mb-0"><strong>Knowledge graph</strong> — Visualize relationships between controls, requirements, and frameworks.</p>
             </div>
@@ -58,7 +57,7 @@
           <div class="card shadow mb-4">
             <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">API</h6></div>
             <div class="card-body">
-              <p class="mb-0">The backend exposes a REST API under <code>/api/v1</code>. OpenAPI docs are at <a href="http://localhost:4000/docs" target="_blank" rel="noopener">/docs</a> when the backend runs on port 4000.</p>
+              <p class="mb-0">The backend exposes a REST API under <code>/api/v1</code>. OpenAPI docs are at <a href="http://localhost:5010/docs" target="_blank" rel="noopener">/docs</a> when the backend runs on port 5010.</p>
             </div>
           </div>
         </div>

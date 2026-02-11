@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import health, frameworks, requirements, assessments, evidence, documents, chat, reports, graph, faq
+from app.api.v1 import health, frameworks, requirements, assessments, evidence, documents, chat, reports, graph, faq, ollama
 
 api_router = APIRouter()
 
@@ -15,4 +15,5 @@ api_router.include_router(documents.router, prefix="/documents", tags=["document
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(graph.router, prefix="/graph", tags=["graph"])
+api_router.include_router(ollama.router, prefix="/ollama", tags=["ollama"])
 api_router.include_router(faq.router, prefix="/faq", tags=["faq"])
