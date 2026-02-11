@@ -64,15 +64,19 @@
       var status = document.getElementById('modelStatus');
       try {
         var models = await apiGet('ollama/models');
-        models.forEach(function(name) {
+        (models || []).forEach(function(name) {
           var opt = document.createElement('option');
           opt.value = name;
           opt.textContent = name;
           sel.appendChild(opt);
         });
-        status.textContent = models.length ? models.length + ' model(s) from Ollama' : 'No models';
+        if (models && models.length) {
+          status.textContent = models.length + ' model(s) from Ollama';
+        } else {
+          status.textContent = 'No models listed. Ensure Ollama is running on the host (port 11434). Chat uses the default model.';
+        }
       } catch (e) {
-        status.textContent = 'Could not load models';
+        status.textContent = 'Could not load models. Check backend logs; Ollama may be unreachable from the container.';
       }
     })();
     document.getElementById('chatSend').onclick = async function() {

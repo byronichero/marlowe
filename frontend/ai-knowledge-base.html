@@ -79,21 +79,56 @@
       }
     }
     loadDocsFolder();
+    function pollJobStatus(jobId, filename, resultEl, btn, input) {
+      var maxAttempts = 150;
+      var attempts = 0;
+      var interval = setInterval(async function() {
+        attempts++;
+        try {
+          var status = await apiGet('documents/jobs/' + encodeURIComponent(jobId));
+          if (status.status === 'completed') {
+            clearInterval(interval);
+            resultEl.innerHTML = '<span class="text-success">Uploaded <strong>' + (status.filename || filename) + '</strong> – ' + (status.chunks || 0) + ' chunks added to Qdrant.</span>';
+            if (input) input.value = '';
+            loadDocsFolder();
+          } else if (status.status === 'failed') {
+            clearInterval(interval);
+            resultEl.innerHTML = '<span class="text-danger">' + (status.error || 'Upload failed') + '</span>';
+          }
+          if (status.status === 'completed' || status.status === 'failed') btn.disabled = false;
+        } catch (e) {
+          resultEl.innerHTML = '<span class="text-warning">Checking status… (' + e.message + ')</span>';
+        }
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          resultEl.innerHTML = '<span class="text-warning">Status check timed out. The upload may still complete; refresh the page later.</span>';
+          btn.disabled = false;
+        }
+      }, 2000);
+    }
     document.getElementById('uploadBtn').onclick = async function() {
       var input = document.getElementById('docFile');
       var resultEl = document.getElementById('uploadResult');
       if (!input.files || !input.files[0]) return;
       var fd = new FormData();
       fd.append('file', input.files[0]);
+      var filename = input.files[0].name;
       var btn = document.getElementById('uploadBtn');
       btn.disabled = true;
-      resultEl.innerHTML = '<span class="text-muted">Uploading and indexing…</span>';
+      resultEl.innerHTML = '<span class="text-muted">Uploading…</span>';
       try {
         var r = await fetch(apiUrl('documents/upload'), { method: 'POST', body: fd });
         var contentType = r.headers.get('Content-Type') || '';
         var data = null;
         if (contentType.indexOf('application/json') !== -1) {
           try { data = await r.json(); } catch (_) { data = null; }
+        }
+        if (r.status === 202 && data && data.job_id) {
+          resultEl.innerHTML = '<span class="text-info"><i class="fas fa-info-circle me-1"></i>Processing in background. You can leave this page. Checking status…</span>';
+          input.value = '';
+          btn.disabled = false;
+          pollJobStatus(data.job_id, data.filename || filename, resultEl, btn, null);
+          return;
         }
         if (!r.ok) {
           var msg = (data && data.detail) ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : r.status + ' ' + r.statusText;

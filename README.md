@@ -79,6 +79,18 @@ The `docs/` folder (PDFs, DOCX, .md, etc.) can be ingested into Qdrant so **AI C
 
 Frameworks and requirements are synced from Postgres to Neo4j when you create or update them via the API. For existing data, use **Sync from DB** on the Knowledge Graph page, or `POST /api/v1/graph/sync`. The graph UI (vis-network) shows frameworks and requirements and **BELONGS_TO** edges; pan and zoom to explore.
 
+## Ollama (on host)
+
+The backend in Docker reaches Ollama at `host.docker.internal:11434`. **On Linux, Ollama must listen on all interfaces** so the container can connect: start it with `OLLAMA_HOST=0.0.0.0` (e.g. `OLLAMA_HOST=0.0.0.0 ollama serve`). If you use systemd:
+
+```bash
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+```
+
+To verify from the API: `GET http://localhost:5010/api/v1/ollama/health` returns `{"reachable": true}` when Ollama is reachable.
+
 ## Ollama model picker
 
 **Chat** lets users choose an Ollama model from a dropdown. The list is loaded from `GET /api/v1/ollama/models` (Ollama’s `/api/tags`). Send the selected model in the chat request body as `model`; the reply includes `model_used`.

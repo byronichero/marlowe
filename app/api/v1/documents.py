@@ -4,8 +4,8 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -18,6 +18,9 @@ router = APIRouter()
 # In-memory list for scaffold (replace with DB + MinIO listing)
 _documents_store: list[dict] = []
 
+# Background upload jobs: job_id -> { status, filename, chunks, error, id, object_key }
+_upload_jobs: dict[str, dict] = {}
+
 
 class DocumentListItem(BaseModel):
     """Minimal document list item."""
@@ -28,11 +31,31 @@ class DocumentListItem(BaseModel):
 
 
 class UploadResponse(BaseModel):
-    """Response after uploading and ingesting a document into Qdrant."""
+    """Response after uploading and ingesting a document into Qdrant (sync or final job result)."""
 
     ok: bool
     filename: str
     chunks: int = 0
+    error: str | None = None
+    id: str | None = None
+    object_key: str | None = None
+
+
+class UploadAcceptedResponse(BaseModel):
+    """Response when upload is accepted for background processing (202)."""
+
+    job_id: str
+    filename: str
+    message: str = "Processing in background. You can leave this page."
+
+
+class JobStatusResponse(BaseModel):
+    """Status of a background upload job."""
+
+    job_id: str
+    status: str  # pending | running | completed | failed
+    filename: str
+    chunks: int | None = None
     error: str | None = None
     id: str | None = None
     object_key: str | None = None
@@ -100,11 +123,72 @@ async def list_documents() -> list[DocumentListItem]:
     return [DocumentListItem(**d) for d in _documents_store]
 
 
-@router.post("/upload", response_model=UploadResponse)
-async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
+async def _run_upload_job(
+    job_id: str,
+    filename: str,
+    content: bytes,
+    content_type: str | None,
+    object_key: str,
+    doc_id: str,
+) -> None:
+    """Run in background: MinIO upload, ingest, then update job status."""
+    _upload_jobs[job_id]["status"] = "running"
+    try:
+        try:
+            upload_file(
+                object_key,
+                content,
+                length=len(content),
+                content_type=content_type or "application/octet-stream",
+            )
+        except Exception as e:
+            logger.warning("MinIO upload failed for %s: %s", filename, e)
+        result = await ingest_single_file(file_content=content, filename=filename)
+        if result.get("ok"):
+            _upload_jobs[job_id].update(
+                status="completed",
+                chunks=result.get("chunks", 0),
+                id=doc_id,
+                object_key=object_key,
+            )
+            _documents_store.append(
+                {"id": doc_id, "filename": filename, "object_key": object_key}
+            )
+        else:
+            _upload_jobs[job_id].update(
+                status="failed",
+                error=result.get("error", "Ingest failed"),
+            )
+    except Exception as e:
+        logger.exception("Background upload job %s failed", job_id)
+        _upload_jobs[job_id].update(status="failed", error=str(e))
+
+
+@router.get("/jobs/{job_id}", response_model=JobStatusResponse)
+async def get_upload_job(job_id: str) -> JobStatusResponse:
+    """Get status of a background upload job."""
+    if job_id not in _upload_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    j = _upload_jobs[job_id]
+    return JobStatusResponse(
+        job_id=job_id,
+        status=j["status"],
+        filename=j["filename"],
+        chunks=j.get("chunks"),
+        error=j.get("error"),
+        id=j.get("id"),
+        object_key=j.get("object_key"),
+    )
+
+
+@router.post("/upload")
+async def upload_document(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+):
     """
-    Upload a document: store in MinIO, then extract, chunk, embed, and upsert into Qdrant.
-    Returns JSON with ok, filename, chunks (or error). One file at a time for reliable processing.
+    Upload a document: accept file and process in background (MinIO + extract, chunk, embed, Qdrant).
+    Returns 202 with job_id so you can leave the page; poll GET /documents/jobs/{job_id} for status.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
@@ -112,26 +196,31 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
     ext = Path(file.filename).suffix or ""
     object_key = f"documents/{uuid.uuid4().hex}{ext}"
     doc_id = uuid.uuid4().hex
-    try:
-        upload_file(
-            object_key, content, length=len(content), content_type=file.content_type or "application/octet-stream"
-        )
-    except Exception as e:
-        logger.warning("MinIO upload failed for %s: %s", file.filename, e)
-    result = await ingest_single_file(file_content=content, filename=file.filename)
-    if not result.get("ok"):
-        raise HTTPException(
-            status_code=422,
-            detail=result.get("error", "Ingest failed"),
-        )
-    item = {"id": doc_id, "filename": file.filename, "object_key": object_key}
-    _documents_store.append(item)
-    return UploadResponse(
-        ok=True,
-        filename=file.filename,
-        chunks=result.get("chunks", 0),
-        id=doc_id,
-        object_key=object_key,
+    job_id = uuid.uuid4().hex
+    _upload_jobs[job_id] = {
+        "status": "pending",
+        "filename": file.filename,
+        "chunks": None,
+        "error": None,
+        "id": None,
+        "object_key": None,
+    }
+    background_tasks.add_task(
+        _run_upload_job,
+        job_id,
+        file.filename,
+        content,
+        file.content_type,
+        object_key,
+        doc_id,
+    )
+    return JSONResponse(
+        status_code=202,
+        content={
+            "job_id": job_id,
+            "filename": file.filename,
+            "message": "Processing in background. You can leave this page.",
+        },
     )
 
 

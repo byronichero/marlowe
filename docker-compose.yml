@@ -20,6 +20,7 @@ services:
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=password
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_API_TIMEOUT=600
       - MINIO_ENDPOINT=host.docker.internal:9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin

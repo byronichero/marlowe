@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     # Ollama (on host)
     ollama_host: str = "http://host.docker.internal:11434"
     ollama_model: str = "llama3.2"
+    ollama_api_timeout: int = 600  # seconds; long prompts/RAG can be slow
 
     # MinIO / S3-compatible
     minio_endpoint: str = "host.docker.internal:9000"
