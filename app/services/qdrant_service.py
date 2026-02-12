@@ -52,3 +52,40 @@ def search(
     c = client or get_qdrant_client()
     results = c.search(collection_name=collection, query_vector=query_vector, limit=limit)
     return results
+
+
+def list_document_sources(
+    collection: str,
+    client: QdrantClient | None = None,
+    max_points: int = 5000,
+) -> list[str]:
+    """
+    Scroll through the collection and return unique document source names (filenames/paths).
+    Used so the chat can answer questions like 'which documents are stored?'.
+    """
+    c = client or get_qdrant_client()
+    seen: set[str] = set()
+    offset = None
+    fetched = 0
+    try:
+        while fetched < max_points:
+            records, next_offset = c.scroll(
+                collection_name=collection,
+                limit=min(500, max_points - fetched),
+                offset=offset,
+                with_payload=["source"],
+                with_vectors=False,
+            )
+            for rec in records:
+                payload = rec.payload or {}
+                src = payload.get("source")
+                if isinstance(src, str) and src.strip():
+                    seen.add(src.strip())
+            fetched += len(records)
+            if not next_offset or not records:
+                break
+            offset = next_offset
+    except Exception as e:
+        logger.warning("Failed to list document sources from Qdrant: %s", e)
+        return []
+    return sorted(seen)

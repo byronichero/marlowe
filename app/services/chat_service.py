@@ -1,11 +1,10 @@
 """AI chat service – Ollama with optional Qdrant document context."""
 
 import logging
-from typing import Any
 
 from app.core.config import settings
 from app.services.ollama_service import ollama_chat, ollama_embeddings
-from app.services.qdrant_service import ensure_collection, search
+from app.services.qdrant_service import ensure_collection, list_document_sources, search
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +27,15 @@ async def chat_with_context(
     if use_rag:
         try:
             ensure_collection()
+            # Get document list so the model can answer "which documents are stored?"
+            doc_sources = list_document_sources(settings.qdrant_collection)
+            doc_list_str = ""
+            if doc_sources:
+                doc_list_str = (
+                    "Documents in the knowledge base: "
+                    + ", ".join(doc_sources)
+                    + ".\n\n"
+                )
             query_vector = await ollama_embeddings(message, model=settings.embedding_model)
             if query_vector:
                 results = search(
@@ -39,14 +47,26 @@ async def chat_with_context(
                     parts = []
                     total = 0
                     for r in results:
-                        text = (r.payload or {}).get("text") or ""
-                        if not text or total + len(text) > CONTEXT_CHAR_LIMIT:
+                        payload = r.payload or {}
+                        text = payload.get("text") or ""
+                        source = payload.get("source") or ""
+                        prefix = f"[From: {source}]\n" if source else ""
+                        chunk = f"{prefix}{text}" if prefix else text
+                        if not text or total + len(chunk) > CONTEXT_CHAR_LIMIT:
                             continue
-                        parts.append(text)
-                        total += len(text)
+                        parts.append(chunk)
+                        total += len(chunk)
                     if parts:
                         context = "\n\n---\n\n".join(parts)
-                        prompt = f"Use the following excerpts from our documentation when relevant:\n\n{context}\n\n---\n\nQuestion: {message}"
+                        prompt = (
+                            f"{doc_list_str}"
+                            "Use the following excerpts from our documentation when relevant:\n\n"
+                            f"{context}\n\n---\n\nQuestion: {message}"
+                        )
+                    elif doc_list_str:
+                        prompt = f"{doc_list_str}Question: {message}"
+                elif doc_list_str:
+                    prompt = f"{doc_list_str}Question: {message}"
         except Exception as e:
             logger.warning("RAG retrieval failed, continuing without context: %s", e)
     used_model = model or settings.ollama_model
