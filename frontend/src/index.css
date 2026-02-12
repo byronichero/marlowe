@@ -57,3 +57,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* CopilotKit chat bubble and popup above other content */
+.copilotKitButton,
+.copilotKitPopup,
+.copilotKitWindow {
+  z-index: 9999 !important;
+}

@@ -20,6 +20,10 @@ dependencies = [
     "python-multipart>=0.0.9",
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
+    "copilotkit>=0.1.70",
+    "ag-ui-langgraph>=0.0.20",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
 ]
 
 [project.optional-dependencies]

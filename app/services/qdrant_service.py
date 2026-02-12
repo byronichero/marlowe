@@ -48,10 +48,18 @@ def search(
     limit: int = 10,
     client: QdrantClient | None = None,
 ) -> list[Any]:
-    """Semantic search; returns list of scored points."""
+    """Semantic search; returns list of scored points (payload, score, etc.).
+    Uses query_points (qdrant-client 1.12+); legacy search() was removed.
+    """
     c = client or get_qdrant_client()
-    results = c.search(collection_name=collection, query_vector=query_vector, limit=limit)
-    return results
+    response = c.query_points(
+        collection_name=collection,
+        query=query_vector,
+        limit=limit,
+        with_payload=True,
+        with_vectors=False,
+    )
+    return list(response.points) if response.points else []
 
 
 def list_document_sources(

@@ -240,16 +240,14 @@ export default function KnowledgeBase() {
                       <p className="text-sm text-muted-foreground">{formatSize(doc.size)}</p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
+                  <a
+                    href={`/api/v1/documents/download?path=${encodeURIComponent(doc.path)}`}
+                    download
+                    className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    <a href={`/api/v1/documents/download?path=${encodeURIComponent(doc.path)}`} download>
-                      <Download className="h-4 w-4 mr-1" />
-                      Download
-                    </a>
-                  </Button>
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </a>
                 </div>
               ))}
             </div>

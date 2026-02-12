@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { CopilotPopup } from '@copilotkit/react-ui'
 import {
   Home,
   LayoutDashboard,
@@ -85,6 +86,14 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Floating chat bubble – visible on every page */}
+      <CopilotPopup
+        labels={{
+          title: 'Marlowe Assistant',
+          initial: 'Ask about governance, frameworks, or your knowledge base.',
+        }}
+      />
     </div>
   )
 }

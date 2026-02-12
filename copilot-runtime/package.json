@@ -1,0 +1,13 @@
+{
+  "name": "marlowe-copilot-runtime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@copilotkit/runtime": "^1.51.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0"
+  }
+}

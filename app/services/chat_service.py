@@ -24,6 +24,7 @@ async def chat_with_context(
     """
     _ = context_document_ids  # reserved for future per-document filter
     prompt = message
+    system_prompt: str | None = None
     if use_rag:
         try:
             ensure_collection()
@@ -42,9 +43,18 @@ async def chat_with_context(
             if recent_docs:
                 recent_list = [doc["source"] for doc in recent_docs]
                 doc_list_str += (
-                    f"Recently uploaded (last 24 hours, newest first): "
+                    "Recently uploaded (last 24 hours, newest first): "
                     + ", ".join(recent_list)
-                    + ".\n\n"
+                    + ". When the user asks what they just uploaded, which document they added, "
+                    "or about the most recent upload, answer using this list (the first item is the newest).\n\n"
+                )
+            # System instruction so the model does not claim it lacks access to the knowledge base
+            if doc_list_str:
+                system_prompt = (
+                    "You are the Marlowe AI governance assistant. You have direct access to the "
+                    "knowledge base and the document lists provided in the user message. Use that "
+                    "information to answer. Do not say you do not have access to the user's files or "
+                    "uploads—you do; the lists and excerpts in the conversation are that access."
                 )
             query_vector = await ollama_embeddings(message, model=settings.embedding_model)
             if query_vector:
@@ -80,5 +90,5 @@ async def chat_with_context(
         except Exception as e:
             logger.warning("RAG retrieval failed, continuing without context: %s", e)
     used_model = model or settings.ollama_model
-    reply = await ollama_chat(prompt, model=used_model)
+    reply = await ollama_chat(prompt, model=used_model, system=system_prompt)
     return reply, used_model

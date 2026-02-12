@@ -41,7 +41,8 @@ class Settings(BaseSettings):
 
     # Ollama (on host)
     ollama_host: str = "http://host.docker.internal:11434"
-    ollama_model: str = "llama3.2"
+    ollama_model: str = "granite3.2:latest"
+    ollama_fallback_model: str = "qwen3:latest"  # used if requested model returns 404 (not pulled)
     ollama_api_timeout: int = 600  # seconds; long prompts/RAG can be slow
 
     # MinIO / S3-compatible
