@@ -89,3 +89,57 @@ def list_document_sources(
         logger.warning("Failed to list document sources from Qdrant: %s", e)
         return []
     return sorted(seen)
+
+
+def get_recent_documents(
+    collection: str,
+    client: QdrantClient | None = None,
+    hours: int = 24,
+    max_points: int = 5000,
+) -> list[dict[str, str]]:
+    """
+    Get recently uploaded documents (within the last N hours).
+    Returns list of {source, uploaded_at} dicts, sorted by timestamp (newest first).
+    """
+    from datetime import datetime, timedelta, timezone
+
+    c = client or get_qdrant_client()
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff_iso = cutoff.isoformat()
+
+    recent_docs: dict[str, str] = {}  # source -> uploaded_at
+    offset = None
+    fetched = 0
+
+    try:
+        while fetched < max_points:
+            records, next_offset = c.scroll(
+                collection_name=collection,
+                limit=min(500, max_points - fetched),
+                offset=offset,
+                with_payload=["source", "uploaded_at"],
+                with_vectors=False,
+            )
+            for rec in records:
+                payload = rec.payload or {}
+                src = payload.get("source")
+                uploaded_at = payload.get("uploaded_at")
+                if isinstance(src, str) and isinstance(uploaded_at, str):
+                    if uploaded_at >= cutoff_iso:
+                        # Keep the most recent timestamp for each source
+                        if src not in recent_docs or uploaded_at > recent_docs[src]:
+                            recent_docs[src] = uploaded_at
+            fetched += len(records)
+            if not next_offset or not records:
+                break
+            offset = next_offset
+    except Exception as e:
+        logger.warning("Failed to get recent documents from Qdrant: %s", e)
+        return []
+
+    # Sort by timestamp, newest first
+    result = [
+        {"source": src, "uploaded_at": ts} for src, ts in recent_docs.items()
+    ]
+    result.sort(key=lambda x: x["uploaded_at"], reverse=True)
+    return result

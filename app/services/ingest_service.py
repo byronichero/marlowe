@@ -3,6 +3,7 @@
 import io
 import logging
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -121,11 +122,17 @@ async def ingest_single_file(file_content: bytes, filename: str) -> dict[str, An
     client = get_qdrant_client()
     collection = settings.qdrant_collection
     source_path = filename
+    uploaded_at = datetime.now(timezone.utc).isoformat()
     points = [
         PointStruct(
             id=_stable_point_id(source_path, i),
             vector=vec,
-            payload={"source": source_path, "chunk_index": i, "text": chunks[i][:2000]},
+            payload={
+                "source": source_path,
+                "chunk_index": i,
+                "text": chunks[i][:2000],
+                "uploaded_at": uploaded_at,
+            },
         )
         for i, vec in enumerate(vectors)
     ]
@@ -171,6 +178,7 @@ async def ingest_docs(path_override: str | None = None) -> dict[str, Any]:
             errors.append(f"{rel_path}: embedding count mismatch")
             continue
 
+        uploaded_at = datetime.now(timezone.utc).isoformat()
         points = [
             PointStruct(
                 id=_stable_point_id(rel_path, i),
@@ -179,6 +187,7 @@ async def ingest_docs(path_override: str | None = None) -> dict[str, Any]:
                     "source": rel_path,
                     "chunk_index": i,
                     "text": chunks[i][:2000],
+                    "uploaded_at": uploaded_at,
                 },
             )
             for i, vec in enumerate(vectors)

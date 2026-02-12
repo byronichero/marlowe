@@ -4,7 +4,7 @@ import logging
 
 from app.core.config import settings
 from app.services.ollama_service import ollama_chat, ollama_embeddings
-from app.services.qdrant_service import ensure_collection, list_document_sources, search
+from app.services.qdrant_service import ensure_collection, get_recent_documents, list_document_sources, search
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,16 @@ async def chat_with_context(
                 doc_list_str = (
                     "Documents in the knowledge base: "
                     + ", ".join(doc_sources)
+                    + ".\n\n"
+                )
+            
+            # Get recently uploaded documents (last 24 hours) for temporal queries
+            recent_docs = get_recent_documents(settings.qdrant_collection, hours=24)
+            if recent_docs:
+                recent_list = [doc["source"] for doc in recent_docs]
+                doc_list_str += (
+                    f"Recently uploaded (last 24 hours, newest first): "
+                    + ", ".join(recent_list)
                     + ".\n\n"
                 )
             query_vector = await ollama_embeddings(message, model=settings.embedding_model)
