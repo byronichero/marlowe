@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/layout'
+import Home from './pages/home'
 import Dashboard from './pages/dashboard'
-import Chat from './pages/chat'
 import KnowledgeBase from './pages/knowledge-base'
 import Assessments from './pages/assessments'
 import KnowledgeGraph from './pages/knowledge-graph'
@@ -14,9 +14,8 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<Home />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="chat" element={<Chat />} />
         <Route path="knowledge-base" element={<KnowledgeBase />} />
         <Route path="assessments" element={<Assessments />} />
         <Route path="knowledge-graph" element={<KnowledgeGraph />} />

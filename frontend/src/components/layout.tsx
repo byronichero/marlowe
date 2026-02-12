@@ -1,5 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { CopilotKit } from '@copilotkit/react-core'
 import { CopilotPopup } from '@copilotkit/react-ui'
+import { useChatModel } from '@/contexts/chat-model'
 import {
   Home,
   LayoutDashboard,
@@ -7,7 +9,6 @@ import {
   ClipboardCheck,
   Network,
   FileText,
-  MessageSquare,
   HelpCircle,
   Info,
   LogIn,
@@ -21,13 +22,13 @@ const navigation = [
   { name: 'Assessments', href: '/assessments', icon: ClipboardCheck },
   { name: 'Knowledge Graph', href: '/knowledge-graph', icon: Network },
   { name: 'Reports', href: '/reports', icon: FileText },
-  { name: 'Chat', href: '/chat', icon: MessageSquare },
   { name: 'FAQ', href: '/faq', icon: HelpCircle },
   { name: 'Help', href: '/help', icon: Info },
 ]
 
 export default function Layout() {
   const location = useLocation()
+  const { model } = useChatModel()
 
   return (
     <div className="flex h-screen bg-background">
@@ -87,13 +88,15 @@ export default function Layout() {
         </div>
       </main>
 
-      {/* Floating chat bubble – visible on every page */}
-      <CopilotPopup
-        labels={{
-          title: 'Marlowe Assistant',
-          initial: 'Ask about governance, frameworks, or your knowledge base.',
-        }}
-      />
+      {/* Side chat: plain model (no Marlowe system prompt); wrapped in its own CopilotKit so it uses free_chat_agent */}
+      <CopilotKit runtimeUrl="/api/copilotkit" agent="free_chat_agent" properties={{ model }}>
+        <CopilotPopup
+          labels={{
+            title: 'Quick Chat',
+            initial: 'General chat with the model—no Marlowe context.',
+          }}
+        />
+      </CopilotKit>
     </div>
   )
 }

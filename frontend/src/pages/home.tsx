@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useChatModel } from '@/contexts/chat-model'
+import { CopilotChat } from '@copilotkit/react-ui'
 import { api } from '@/lib/api'
 
-export default function Chat() {
+export default function Home() {
   const { model, setModel } = useChatModel()
   const [models, setModels] = useState<string[]>([])
 
@@ -16,9 +17,9 @@ export default function Chat() {
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">AI Chat</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Marlowe Assistant</h1>
         <p className="text-muted-foreground">
-          Ask the Marlowe assistant about governance and compliance. Uses your knowledge base when available.
+          Ask about governance, frameworks, and your knowledge base. Uses the Marlowe system prompt and RAG.
         </p>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -38,10 +39,13 @@ export default function Chat() {
           ))}
         </select>
       </div>
-      <div className="mt-4 flex-1">
-        <p className="text-sm text-muted-foreground">
-          Use the <strong>chat bubble in the bottom-right corner</strong> of the screen to open the assistant. Questions are answered with RAG over your uploaded documents.
-        </p>
+      <div className="mt-4 flex-1 min-h-0">
+        <CopilotChat
+          labels={{
+            title: 'Marlowe Assistant',
+            initial: 'Ask about governance, frameworks, or your knowledge base. Questions use RAG over your uploaded documents.',
+          }}
+        />
       </div>
     </div>
   )

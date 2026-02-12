@@ -13,6 +13,18 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import init_db
 
+# Main chat uses Marlowe system prompt + RAG; side popup uses plain model (free_chat_agent).
+MARLOWE_AGENT = LangGraphAGUIAgent(
+    name="marlowe_agent",
+    description="Marlowe AI governance assistant with RAG over your knowledge base.",
+    graph=graph,
+)
+FREE_CHAT_AGENT = LangGraphAGUIAgent(
+    name="free_chat_agent",
+    description="General chat with the model (no Marlowe system prompt).",
+    graph=graph,
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -38,15 +50,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router, prefix=settings.api_v1_prefix)
-    # CopilotKit AG-UI endpoint for LangGraph agent (RAG chat)
+    # CopilotKit AG-UI: one endpoint per agent (avoids list-dispatch 502); same graph, different paths.
     add_langgraph_fastapi_endpoint(
         app,
-        LangGraphAGUIAgent(
-            name="marlowe_agent",
-            description="Marlowe AI governance assistant with RAG over your knowledge base.",
-            graph=graph,
-        ),
+        MARLOWE_AGENT,
         path="/api/v1/copilotkit",
+    )
+    add_langgraph_fastapi_endpoint(
+        app,
+        FREE_CHAT_AGENT,
+        path="/api/v1/copilotkit/free",
     )
     return app
 

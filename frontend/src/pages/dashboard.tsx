@@ -128,11 +128,11 @@ export default function Dashboard() {
               <span className="font-medium">Upload to Knowledge Base</span>
             </Link>
             <Link
-              to="/chat"
+              to="/"
               className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent"
             >
               <MessageSquare className="h-5 w-5 text-primary" />
-              <span className="font-medium">AI Chat</span>
+              <span className="font-medium">Marlowe Assistant</span>
             </Link>
             <Link
               to="/knowledge-graph"

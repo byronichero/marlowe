@@ -25,11 +25,20 @@ def _resolve_model(config: RunnableConfig, state: MessagesState) -> str:
     return settings.ollama_model
 
 
+def _use_marlowe_context(config: RunnableConfig) -> bool:
+    """True = use RAG and Marlowe system prompt; False = plain model (e.g. side/free chat)."""
+    configurable = (config or {}).get("configurable") or {}
+    explicit = configurable.get("useMarloweContext")
+    if explicit is not None:
+        return bool(explicit)
+    # When request targets free_chat_agent, no Marlowe context
+    return configurable.get("agent_id") != "free_chat_agent"
+
+
 async def rag_chat_node(state: MessagesState, config: RunnableConfig) -> dict:
     """
-    Single node: build RAG prompt, call ChatOllama (streaming), return assistant message.
-    Streaming is enabled so the AG-UI client can stream tokens when using stream_mode="messages".
-    Model can be overridden via config.configurable.model (from CopilotKit frontend properties).
+    Single node: build RAG prompt (or plain user message), call ChatOllama (streaming), return assistant message.
+    When useMarloweContext is False (e.g. free_chat_agent / side popup), skips RAG and system prompt.
     """
     messages = state.get("messages") or []
     last_content = ""
@@ -45,7 +54,11 @@ async def rag_chat_node(state: MessagesState, config: RunnableConfig) -> dict:
         if settings.ollama_fallback_model != chosen_model
         else None
     )
-    system_prompt, user_content = await build_rag_prompt(last_content, None)
+    use_marlowe = _use_marlowe_context(config)
+    if use_marlowe:
+        system_prompt, user_content = await build_rag_prompt(last_content, None)
+    else:
+        system_prompt, user_content = None, last_content
     lc_messages: list[SystemMessage | HumanMessage] = []
     if system_prompt:
         lc_messages.append(SystemMessage(content=system_prompt))

@@ -18,6 +18,9 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 const runtime = new CopilotRuntime({
   agents: {
     marlowe_agent: new LangGraphHttpAgent({ url: AGENT_URL }),
+    free_chat_agent: new LangGraphHttpAgent({
+      url: AGENT_URL.replace(/\/?$/, "") + "/free",
+    }),
   },
 });
 
