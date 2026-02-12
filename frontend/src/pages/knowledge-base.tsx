@@ -1,9 +1,123 @@
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Upload, FileText, Search } from 'lucide-react'
+import { Upload, FileText, Search, Loader2, Download, CheckCircle2, XCircle } from 'lucide-react'
+
+interface DocFile {
+  name: string
+  path: string
+  size: number
+}
+
+interface UploadJob {
+  job_id: string
+  filename: string
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  chunks?: number
+  error?: string
+}
 
 export default function KnowledgeBase() {
+  const [documents, setDocuments] = useState<DocFile[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [uploadStatus, setUploadStatus] = useState<string>('')
+  const [uploadProgress, setUploadProgress] = useState<UploadJob | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    loadDocuments()
+  }, [])
+
+  useEffect(() => {
+    if (uploadProgress && (uploadProgress.status === 'pending' || uploadProgress.status === 'running')) {
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/v1/documents/jobs/${uploadProgress.job_id}`)
+          if (response.ok) {
+            const job: UploadJob = await response.json()
+            setUploadProgress(job)
+            
+            if (job.status === 'completed') {
+              setUploadStatus(`✓ Successfully uploaded ${job.filename} - ${job.chunks || 0} chunks indexed`)
+              clearInterval(pollInterval)
+              loadDocuments()
+              setTimeout(() => setUploadStatus(''), 5000)
+            } else if (job.status === 'failed') {
+              setUploadStatus(`✗ Upload failed: ${job.error || 'Unknown error'}`)
+              clearInterval(pollInterval)
+              setTimeout(() => setUploadStatus(''), 5000)
+            }
+          }
+        } catch (error) {
+          console.error('Error polling job status:', error)
+          clearInterval(pollInterval)
+        }
+      }, 2000)
+
+      return () => clearInterval(pollInterval)
+    }
+  }, [uploadProgress])
+
+  const loadDocuments = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/v1/documents/docs-files')
+      if (response.ok) {
+        const docs: DocFile[] = await response.json()
+        setDocuments(docs)
+      }
+    } catch (error) {
+      console.error('Error loading documents:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    const file = files[0]
+    setUploadStatus(`Uploading ${file.name}...`)
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch('/api/v1/documents/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setUploadProgress({
+          job_id: result.job_id,
+          filename: result.filename,
+          status: 'pending',
+        })
+      } else {
+        setUploadStatus(`✗ Upload failed: ${response.statusText}`)
+        setTimeout(() => setUploadStatus(''), 5000)
+      }
+    } catch (error) {
+      setUploadStatus(`✗ Upload error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setTimeout(() => setUploadStatus(''), 5000)
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const formatSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -29,12 +143,42 @@ export default function KnowledgeBase() {
             <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-8 text-center">
               <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-sm text-muted-foreground mb-4">
-                Drag and drop files here, or click to browse
+                Click to select files to upload
               </p>
-              <Button>Select Files</Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                accept=".pdf,.docx,.txt"
+                className="hidden"
+                id="file-upload"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadProgress !== null && uploadProgress.status !== 'completed' && uploadProgress.status !== 'failed'}
+              >
+                {uploadProgress && (uploadProgress.status === 'pending' || uploadProgress.status === 'running') ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Select Files'
+                )}
+              </Button>
             </div>
+            {uploadStatus && (
+              <div className={`flex items-center gap-2 text-sm ${
+                uploadStatus.startsWith('✓') ? 'text-green-600' : uploadStatus.startsWith('✗') ? 'text-red-600' : 'text-muted-foreground'
+              }`}>
+                {uploadStatus.startsWith('✓') && <CheckCircle2 className="h-4 w-4" />}
+                {uploadStatus.startsWith('✗') && <XCircle className="h-4 w-4" />}
+                {!uploadStatus.startsWith('✓') && !uploadStatus.startsWith('✗') && <Loader2 className="h-4 w-4 animate-spin" />}
+                {uploadStatus}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              Supported formats: PDF, DOCX, TXT. Max size: 50MB per file.
+              Supported formats: PDF, DOCX, TXT. Files are processed with OCR and embedded for semantic search.
             </p>
           </CardContent>
         </Card>
@@ -56,7 +200,7 @@ export default function KnowledgeBase() {
               <Button>Search</Button>
             </div>
             <div className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
-              No results yet. Try searching after uploading documents.
+              Semantic search coming soon. Use the Chat page to ask questions about your documents.
             </div>
           </CardContent>
         </Card>
@@ -65,17 +209,51 @@ export default function KnowledgeBase() {
       {/* Documents List */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Documents</CardTitle>
+          <CardTitle>Uploaded Documents</CardTitle>
           <CardDescription>Documents stored in the knowledge base</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
-            <p>No documents uploaded yet</p>
-            <p className="text-sm mt-2">
-              Upload documents to populate the knowledge base and enable AI-powered search
-            </p>
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Loading documents...
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
+              <p>No documents uploaded yet</p>
+              <p className="text-sm mt-2">
+                Upload documents to populate the knowledge base and enable AI-powered search
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {documents.map((doc, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{doc.name}</p>
+                      <p className="text-sm text-muted-foreground">{formatSize(doc.size)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <a href={`/api/v1/documents/download?path=${encodeURIComponent(doc.path)}`} download>
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </a>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
