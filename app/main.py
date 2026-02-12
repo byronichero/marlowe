@@ -8,7 +8,7 @@ from copilotkit import LangGraphAGUIAgent
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.agents.rag_agent import graph
+from app.agents.rag_agent import graph, graph_free
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import init_db
@@ -22,7 +22,7 @@ MARLOWE_AGENT = LangGraphAGUIAgent(
 FREE_CHAT_AGENT = LangGraphAGUIAgent(
     name="free_chat_agent",
     description="General chat with the model (no Marlowe system prompt).",
-    graph=graph,
+    graph=graph_free,
 )
 
 

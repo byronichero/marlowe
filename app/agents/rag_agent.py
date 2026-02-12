@@ -1,4 +1,4 @@
-"""Minimal LangGraph agent that wraps Marlowe RAG chat for CopilotKit AG-UI."""
+"""Minimal LangGraph agents for CopilotKit AG-UI: Marlowe (RAG + system prompt) and free chat (plain model)."""
 
 import logging
 
@@ -25,40 +25,28 @@ def _resolve_model(config: RunnableConfig, state: MessagesState) -> str:
     return settings.ollama_model
 
 
-def _use_marlowe_context(config: RunnableConfig) -> bool:
-    """True = use RAG and Marlowe system prompt; False = plain model (e.g. side/free chat)."""
-    configurable = (config or {}).get("configurable") or {}
-    explicit = configurable.get("useMarloweContext")
-    if explicit is not None:
-        return bool(explicit)
-    # When request targets free_chat_agent, no Marlowe context
-    return configurable.get("agent_id") != "free_chat_agent"
-
-
-async def rag_chat_node(state: MessagesState, config: RunnableConfig) -> dict:
-    """
-    Single node: build RAG prompt (or plain user message), call ChatOllama (streaming), return assistant message.
-    When useMarloweContext is False (e.g. free_chat_agent / side popup), skips RAG and system prompt.
-    """
+def _last_user_content(state: MessagesState) -> str:
+    """Extract last user message content from state."""
     messages = state.get("messages") or []
-    last_content = ""
     for m in reversed(messages):
         if isinstance(m, HumanMessage):
-            last_content = m.content if isinstance(m.content, str) else str(m.content)
-            break
-    if not last_content:
-        return {"messages": [AIMessage(content="No message received.")]}
+            return m.content if isinstance(m.content, str) else str(m.content)
+    return ""
+
+
+async def _invoke_chat(
+    state: MessagesState,
+    config: RunnableConfig,
+    system_prompt: str | None,
+    user_content: str,
+) -> dict:
+    """Call ChatOllama with given messages; resolve model and fallback. Returns state update."""
     chosen_model = _resolve_model(config, state)
     fallback_model = (
         settings.ollama_fallback_model
         if settings.ollama_fallback_model != chosen_model
         else None
     )
-    use_marlowe = _use_marlowe_context(config)
-    if use_marlowe:
-        system_prompt, user_content = await build_rag_prompt(last_content, None)
-    else:
-        system_prompt, user_content = None, last_content
     lc_messages: list[SystemMessage | HumanMessage] = []
     if system_prompt:
         lc_messages.append(SystemMessage(content=system_prompt))
@@ -79,16 +67,45 @@ async def rag_chat_node(state: MessagesState, config: RunnableConfig) -> dict:
             logger.warning("ChatOllama failed for model %s: %s", attempt_model, e)
             if attempt_model == chosen_model and fallback_model:
                 continue
-            logger.exception("RAG chat node failed")
+            logger.exception("Chat node failed")
             return {"messages": [AIMessage(content=f"Error: {e!s}")]}
     return {"messages": [AIMessage(content="Error: No working model available.")]}
 
 
-# Build minimal graph: single node, straight through.
-# Checkpointer required so AG-UI/CopilotKit receives a terminal event and run lifecycle is correct.
+async def rag_chat_node(state: MessagesState, config: RunnableConfig) -> dict:
+    """
+    Marlowe node: build RAG prompt (system prompt + context from build_rag_prompt), then chat.
+    System prompt and RAG logic are unchanged; used only by the main-chat graph.
+    """
+    last_content = _last_user_content(state)
+    if not last_content:
+        return {"messages": [AIMessage(content="No message received.")]}
+    system_prompt, user_content = await build_rag_prompt(last_content, None)
+    return await _invoke_chat(state, config, system_prompt, user_content)
+
+
+async def free_chat_node(state: MessagesState, config: RunnableConfig) -> dict:
+    """
+    Free chat node: no RAG, no system prompt; only the user message to the model.
+    Used by the side-popup graph.
+    """
+    last_content = _last_user_content(state)
+    if not last_content:
+        return {"messages": [AIMessage(content="No message received.")]}
+    return await _invoke_chat(state, config, None, last_content)
+
+
+# Marlowe graph: RAG + system prompt (unchanged behavior)
 checkpointer = MemorySaver()
-_workflow = StateGraph(MessagesState)
-_workflow.add_node("rag_chat", rag_chat_node)
-_workflow.add_edge(START, "rag_chat")
-_workflow.add_edge("rag_chat", END)
-graph = _workflow.compile(checkpointer=checkpointer)
+_workflow_marlowe = StateGraph(MessagesState)
+_workflow_marlowe.add_node("rag_chat", rag_chat_node)
+_workflow_marlowe.add_edge(START, "rag_chat")
+_workflow_marlowe.add_edge("rag_chat", END)
+graph = _workflow_marlowe.compile(checkpointer=checkpointer)
+
+# Free chat graph: plain model only
+_workflow_free = StateGraph(MessagesState)
+_workflow_free.add_node("free_chat", free_chat_node)
+_workflow_free.add_edge(START, "free_chat")
+_workflow_free.add_edge("free_chat", END)
+graph_free = _workflow_free.compile(checkpointer=MemorySaver())
