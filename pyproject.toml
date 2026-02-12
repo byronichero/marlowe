@@ -24,6 +24,7 @@ dependencies = [
     "ag-ui-langgraph>=0.0.20",
     "langgraph>=0.2.0",
     "langchain-core>=0.3.0",
+    "langchain-ollama>=0.2.0",
 ]
 
 [project.optional-dependencies]
