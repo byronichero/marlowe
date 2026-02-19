@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Upload, FileText, Search, Loader2, Download, CheckCircle2, XCircle } from 'lucide-react'
 
@@ -18,10 +19,12 @@ interface UploadJob {
   error?: string
 }
 
+type UploadStatusState = { type: 'success'; message: string } | { type: 'error'; message: string } | { type: 'loading'; message: string } | null
+
 export default function KnowledgeBase() {
   const [documents, setDocuments] = useState<DocFile[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [uploadStatus, setUploadStatus] = useState<string>('')
+  const [uploadStatus, setUploadStatus] = useState<UploadStatusState>(null)
   const [uploadProgress, setUploadProgress] = useState<UploadJob | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -39,14 +42,14 @@ export default function KnowledgeBase() {
             setUploadProgress(job)
             
             if (job.status === 'completed') {
-              setUploadStatus(`✓ Successfully uploaded ${job.filename} - ${job.chunks || 0} chunks indexed`)
+              setUploadStatus({ type: 'success', message: `Successfully uploaded ${job.filename} - ${job.chunks || 0} chunks indexed` })
               clearInterval(pollInterval)
               loadDocuments()
-              setTimeout(() => setUploadStatus(''), 5000)
+              setTimeout(() => setUploadStatus(null), 5000)
             } else if (job.status === 'failed') {
-              setUploadStatus(`✗ Upload failed: ${job.error || 'Unknown error'}`)
+              setUploadStatus({ type: 'error', message: `Upload failed: ${job.error || 'Unknown error'}` })
               clearInterval(pollInterval)
-              setTimeout(() => setUploadStatus(''), 5000)
+              setTimeout(() => setUploadStatus(null), 5000)
             }
           }
         } catch (error) {
@@ -79,7 +82,7 @@ export default function KnowledgeBase() {
     if (!files || files.length === 0) return
 
     const file = files[0]
-    setUploadStatus(`Uploading ${file.name}...`)
+    setUploadStatus({ type: 'loading', message: `Uploading ${file.name}...` })
 
     const formData = new FormData()
     formData.append('file', file)
@@ -98,12 +101,12 @@ export default function KnowledgeBase() {
           status: 'pending',
         })
       } else {
-        setUploadStatus(`✗ Upload failed: ${response.statusText}`)
-        setTimeout(() => setUploadStatus(''), 5000)
+        setUploadStatus({ type: 'error', message: `Upload failed: ${response.statusText}` })
+        setTimeout(() => setUploadStatus(null), 5000)
       }
     } catch (error) {
-      setUploadStatus(`✗ Upload error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      setTimeout(() => setUploadStatus(''), 5000)
+      setUploadStatus({ type: 'error', message: `Upload error: ${error instanceof Error ? error.message : 'Unknown error'}` })
+      setTimeout(() => setUploadStatus(null), 5000)
     }
 
     // Reset file input
@@ -169,12 +172,12 @@ export default function KnowledgeBase() {
             </div>
             {uploadStatus && (
               <div className={`flex items-center gap-2 text-sm ${
-                uploadStatus.startsWith('✓') ? 'text-green-600' : uploadStatus.startsWith('✗') ? 'text-red-600' : 'text-muted-foreground'
+                uploadStatus.type === 'success' ? 'text-green-600 dark:text-green-400' : uploadStatus.type === 'error' ? 'text-destructive' : 'text-muted-foreground'
               }`}>
-                {uploadStatus.startsWith('✓') && <CheckCircle2 className="h-4 w-4" />}
-                {uploadStatus.startsWith('✗') && <XCircle className="h-4 w-4" />}
-                {!uploadStatus.startsWith('✓') && !uploadStatus.startsWith('✗') && <Loader2 className="h-4 w-4 animate-spin" />}
-                {uploadStatus}
+                {uploadStatus.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
+                {uploadStatus.type === 'error' && <XCircle className="h-4 w-4" />}
+                {uploadStatus.type === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+                {uploadStatus.message}
               </div>
             )}
             <p className="text-xs text-muted-foreground">
@@ -214,9 +217,19 @@ export default function KnowledgeBase() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Loading documents...
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-5 w-5 rounded" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-9 w-24 rounded-md" />
+                </div>
+              ))}
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

@@ -26,3 +26,8 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Licensed / copyrighted documents – do not commit
+docs/licensed/
+docs/**/ISO*42001*
+docs/**/*licensed*

@@ -2,7 +2,7 @@
 
 AI application for **AI governance**, **responsible AI**, **privacy**, and **global AI regulations**. Supports compliance, assessments, and evidence across frameworks (e.g. EU AI Act, GDPR, NIST AI RMF)—framework-agnostic.
 
-The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Christopher_Marlowe)—Elizabethan playwright, poet, and contemporary of Shakespeare—whose work combined sharp structure, craft, and a touch of intrigue.
+The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Christopher_Marlowe)— Elizabethan playwright, poet, and contemporary of Shakespeare—whose work combined sharp structure, craft, and a touch of intrigue.
 
 ## Stack
 
@@ -14,7 +14,7 @@ The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Chris
 - **Document processing:** Docling only (PDF, DOCX, PPTX, XLSX, etc.)
 - **AI:** Ollama (on host)
 - **Object storage:** MinIO or S3-compatible (on host)
-- **Frontend:** Static HTML/JS/CSS (SB Admin 2 style), nginx
+- **Frontend:** React (Vite, TypeScript, Tailwind CSS, CopilotKit, vis-network). Preferred stack: React + Vite + Tailwind + Shadcn UI. Legacy static HTML (SB Admin 2 style) lives in `frontend-old/` and is not the default UI.
 - **Deployment:** Docker Compose
 
 ## Quick start (Docker)
@@ -27,7 +27,7 @@ The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Chris
    docker compose up -d
    ```
 
-   If you see old or wrong content (e.g. another app or CMMC), rebuild the frontend so the container serves the current Marlowe UI:
+   If you see old or wrong content (e.g. another app), rebuild the frontend so the container serves the current Marlowe UI:
 
    ```bash
    docker compose build --no-cache frontend && docker compose up -d
@@ -97,9 +97,18 @@ To verify from the API: `GET http://localhost:5010/api/v1/ollama/health` returns
 
 ## Project structure
 
-- `app/` – FastAPI application (core, models, schemas, api, services)
+- `app/` – FastAPI application (core, models, schemas, api, services, agents)
 - `database/` – Postgres init script
-- `frontend/` – Static HTML/CSS/JS, served by nginx
+- `frontend/` – **Live UI:** React + Vite + TypeScript + Tailwind, CopilotKit, vis-network (knowledge graph)
+- `frontend-old/` – Legacy static HTML/CSS/JS (SB Admin 2 style), not used by default
 - `docs/` – Reference documents (ingestible into Qdrant)
 
 See `PRD.md` for full product and architecture details.
+
+## Licensed documents and Qdrant
+
+Licensed or copyrighted documents (e.g. ISO standards) must **not** be committed. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for details.
+
+- **Local use:** Create `docs/licensed/` (gitignored) and place your licensed PDFs there. Ingest from `docs` as usual.
+- **Public repo:** Only open-access content in `docs/` is committed.
+- **Clearing Qdrant:** Before sharing a deployment or backup, clear the vector store: `DELETE /api/v1/documents/collection` or `docker compose down -v` to reset volumes.

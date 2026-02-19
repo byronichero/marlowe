@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, FieldCondition, Filter, MatchValue, PointStruct, VectorParams
 
 from app.core.config import settings
 
@@ -14,6 +14,23 @@ logger = logging.getLogger(__name__)
 def get_qdrant_client() -> QdrantClient:
     """Return a Qdrant client."""
     return QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+
+
+def delete_collection(
+    collection: str | None = None,
+    client: QdrantClient | None = None,
+) -> bool:
+    """
+    Delete a Qdrant collection. Returns True if deleted, False if it did not exist.
+    Used to clear vector store before sharing/deployment (e.g. to remove licensed content).
+    """
+    c = client or get_qdrant_client()
+    coll_name = collection or settings.qdrant_collection
+    names = {x.name for x in c.get_collections().collections}
+    if coll_name not in names:
+        return False
+    c.delete_collection(collection_name=coll_name)
+    return True
 
 
 def ensure_collection(
@@ -46,16 +63,24 @@ def search(
     collection: str,
     query_vector: list[float],
     limit: int = 10,
+    framework_id: int | None = None,
     client: QdrantClient | None = None,
 ) -> list[Any]:
     """Semantic search; returns list of scored points (payload, score, etc.).
     Uses query_points (qdrant-client 1.12+); legacy search() was removed.
+    If framework_id is set, filters to documents linked to that framework.
     """
     c = client or get_qdrant_client()
+    query_filter = None
+    if framework_id is not None:
+        query_filter = Filter(
+            must=[FieldCondition(key="framework_id", match=MatchValue(value=framework_id))]
+        )
     response = c.query_points(
         collection_name=collection,
         query=query_vector,
         limit=limit,
+        query_filter=query_filter,
         with_payload=True,
         with_vectors=False,
     )
@@ -151,3 +176,44 @@ def get_recent_documents(
     ]
     result.sort(key=lambda x: x["uploaded_at"], reverse=True)
     return result
+
+
+def count_documents_for_framework(
+    collection: str,
+    framework_id: int,
+    client: QdrantClient | None = None,
+) -> tuple[int, list[str]]:
+    """
+    Count chunks and list unique source filenames for documents linked to a framework.
+    Returns (chunk_count, list_of_source_filenames).
+    """
+    c = client or get_qdrant_client()
+    query_filter = Filter(
+        must=[FieldCondition(key="framework_id", match=MatchValue(value=framework_id))]
+    )
+    count = 0
+    sources: set[str] = set()
+    offset = None
+    try:
+        while True:
+            records, next_offset = c.scroll(
+                collection_name=collection,
+                limit=500,
+                offset=offset,
+                scroll_filter=query_filter,
+                with_payload=["source"],
+                with_vectors=False,
+            )
+            for rec in records:
+                count += 1
+                payload = rec.payload or {}
+                src = payload.get("source")
+                if isinstance(src, str) and src.strip():
+                    sources.add(src.strip())
+            if not next_offset or not records:
+                break
+            offset = next_offset
+    except Exception as e:
+        logger.warning("Failed to count documents for framework %s: %s", framework_id, e)
+        return 0, []
+    return count, sorted(sources)

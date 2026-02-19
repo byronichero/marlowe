@@ -1,8 +1,10 @@
 import type {
   HealthResponse,
   Framework,
+  FrameworkLibraryItem,
   Requirement,
   Assessment,
+  GapAnalysisReport,
   ChatMessage,
   ChatResponse,
   GraphData,
@@ -32,17 +34,62 @@ export const api = {
 
   // Frameworks
   getFrameworks: () => fetchAPI<Framework[]>('frameworks'),
+  getFrameworksLibrary: () => fetchAPI<FrameworkLibraryItem[]>('frameworks/library'),
   getFramework: (id: number) => fetchAPI<Framework>(`frameworks/${id}`),
+  createFramework: (data: Omit<Framework, 'id'>) =>
+    fetchAPI<Framework>('frameworks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getFrameworkEvidence: (frameworkId: number) =>
+    fetchAPI<{ framework_id: number; chunk_count: number; documents: string[]; has_evidence: boolean }>(
+      `frameworks/${frameworkId}/evidence`
+    ),
+
+  // Documents (for framework-linked uploads)
+  uploadFrameworkDocument: async (frameworkId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('framework_id', String(frameworkId))
+    const res = await fetch(`${API_BASE}/documents/upload`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`)
+    return res.json() as Promise<{ job_id: string; filename: string }>
+  },
+  getUploadJobStatus: (jobId: string) =>
+    fetchAPI<{
+      job_id: string
+      status: string
+      filename: string
+      chunks?: number
+      error?: string
+    }>(`documents/jobs/${jobId}`),
 
   // Requirements
   getRequirements: (frameworkId?: number) => {
     const params = frameworkId ? `?framework_id=${frameworkId}` : ''
     return fetchAPI<Requirement[]>(`requirements${params}`)
   },
+  createRequirement: (data: Omit<Requirement, 'id'>) =>
+    fetchAPI<Requirement>('requirements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Assessments
-  getAssessments: () => fetchAPI<Assessment[]>('assessments'),
+  getAssessments: (frameworkId?: number) => {
+    const params = frameworkId ? `?framework_id=${frameworkId}` : ''
+    return fetchAPI<Assessment[]>(`assessments${params}`)
+  },
   getAssessment: (id: number) => fetchAPI<Assessment>(`assessments/${id}`),
+
+  // Gap analysis (LangGraph)
+  runGapAnalysis: (frameworkId: number) =>
+    fetchAPI<GapAnalysisReport>(`gap-analysis/run?framework_id=${frameworkId}`, {
+      method: 'POST',
+    }),
 
   // Chat
   chat: (message: ChatMessage) =>
@@ -56,4 +103,18 @@ export const api = {
 
   // Knowledge graph
   getGraph: () => fetchAPI<GraphData>('graph'),
+  syncGraph: () =>
+    fetchAPI<{ ok: boolean; frameworks: number; requirements: number }>('graph/sync', {
+      method: 'POST',
+    }),
+  getCrosswalk: (frameworkA: number, frameworkB: number) =>
+    fetchAPI<{
+      mappings: Array<{
+        requirement_a: { id: number; identifier: string; title: string; description?: string }
+        requirement_b: { id: number; identifier: string; title: string; description?: string }
+        similarity: number
+      }>
+      framework_a: { id: number; name: string }
+      framework_b: { id: number; name: string }
+    }>(`graph/crosswalk?framework_a=${frameworkA}&framework_b=${frameworkB}`),
 }

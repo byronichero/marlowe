@@ -5,9 +5,23 @@ export interface HealthResponse {
 export interface Framework {
   id: number
   name: string
-  version?: string
+  slug: string
   description?: string
-  url?: string
+  region?: string
+  framework_type?: string
+}
+
+export interface FrameworkLibraryItem {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  region: string | null
+  framework_type: string | null
+  has_evidence: boolean
+  documents: string[]
+  chunk_count: number
+  requirement_count: number
 }
 
 export interface Requirement {
@@ -22,12 +36,20 @@ export interface Requirement {
 
 export interface Assessment {
   id: number
-  framework_id: number
-  organization?: string
-  scope?: string
+  title: string
   status: string
+  framework_id: number | null
+  organization_id: number | null
+  started_at: string | null
+  completed_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface GapAnalysisReport {
+  ok: boolean
+  framework_id: number
+  report: string
 }
 
 export interface ChatMessage {

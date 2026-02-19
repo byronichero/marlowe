@@ -96,9 +96,14 @@ def _extract_text_from_path(file_path: Path, ext: str) -> str:
     return extract_text_from_file(file_path=file_path)
 
 
-async def ingest_single_file(file_content: bytes, filename: str) -> dict[str, Any]:
+async def ingest_single_file(
+    file_content: bytes,
+    filename: str,
+    framework_id: int | None = None,
+) -> dict[str, Any]:
     """
     Ingest one document (bytes + filename) into Qdrant: extract, chunk, embed, upsert.
+    If framework_id is provided, links the document to that framework for gap analysis evidence.
     Returns {"ok": True, "filename": str, "chunks": int} or {"ok": False, "error": str}.
     """
     ext = Path(filename).suffix.lower()
@@ -123,19 +128,25 @@ async def ingest_single_file(file_content: bytes, filename: str) -> dict[str, An
     collection = settings.qdrant_collection
     source_path = filename
     uploaded_at = datetime.now(timezone.utc).isoformat()
-    points = [
-        PointStruct(
-            id=_stable_point_id(source_path, i),
-            vector=vec,
-            payload={
-                "source": source_path,
-                "chunk_index": i,
-                "text": chunks[i][:2000],
-                "uploaded_at": uploaded_at,
-            },
+    base_payload: dict[str, object] = {
+        "source": source_path,
+        "chunk_index": 0,
+        "text": "",
+        "uploaded_at": uploaded_at,
+    }
+    if framework_id is not None:
+        base_payload["framework_id"] = framework_id
+    points = []
+    for i, vec in enumerate(vectors):
+        payload = dict(base_payload)
+        payload["chunk_index"] = i
+        payload["text"] = chunks[i][:2000]
+        point_id = (
+            _stable_point_id(f"{source_path}:{framework_id}", i)
+            if framework_id is not None
+            else _stable_point_id(source_path, i)
         )
-        for i, vec in enumerate(vectors)
-    ]
+        points.append(PointStruct(id=point_id, vector=vec, payload=payload))
     upsert_points(collection, points, client=client)
     logger.info("Ingested single file %s: %d chunks", filename, len(points))
     return {"ok": True, "filename": filename, "chunks": len(points)}

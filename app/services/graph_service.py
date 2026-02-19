@@ -29,21 +29,26 @@ async def get_graph() -> GraphResponse:
     edges: list[GraphEdge] = []
     try:
         async with driver.session() as session:
-            # Query all nodes with label and props
+            # Build id map: elementId -> our stable id (framework_1, requirement_1)
+            id_map: dict[str, str] = {}
             node_result = await session.run(
                 """
                 MATCH (n)
-                RETURN elementId(n) AS id, labels(n)[0] AS label, n.name AS name, n.identifier AS identifier
+                RETURN elementId(n) AS neo4j_id, labels(n)[0] AS label,
+                       n.id AS custom_id, n.name AS name, n.identifier AS identifier
                 """
             )
             async for record in node_result:
-                nid = record["id"] or ""
+                neo4j_id = record["neo4j_id"] or ""
+                custom_id = record["custom_id"]
                 lbl = record["label"] or "node"
-                name = record["name"] or record["identifier"] or nid
+                name = record["name"] or record["identifier"] or custom_id or neo4j_id
+                nid = str(custom_id) if custom_id else neo4j_id
+                id_map[neo4j_id] = nid
                 nodes.append(
                     GraphNode(id=nid, label=str(name), type=lbl, properties={"name": name})
                 )
-            # Query all relationships
+            # Query all relationships (map to our stable ids)
             edge_result = await session.run(
                 """
                 MATCH (a)-[r]->(b)
@@ -51,13 +56,16 @@ async def get_graph() -> GraphResponse:
                 """
             )
             async for record in edge_result:
-                edges.append(
-                    GraphEdge(
-                        source=record["src"],
-                        target=record["tgt"],
-                        type=record["rel"] or "references",
+                src = id_map.get(record["src"], record["src"])
+                tgt = id_map.get(record["tgt"], record["tgt"])
+                if src and tgt:
+                    edges.append(
+                        GraphEdge(
+                            source=src,
+                            target=tgt,
+                            type=record["rel"] or "references",
+                        )
                     )
-                )
     except Exception as e:
         logger.warning("Neo4j get_graph failed: %s", e)
     finally:

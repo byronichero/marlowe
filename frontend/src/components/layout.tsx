@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import { CopilotKit } from '@copilotkit/react-core'
 import { CopilotPopup } from '@copilotkit/react-ui'
 import { useChatModel } from '@/contexts/chat-model'
+import { useTheme } from '@/contexts/theme'
 import {
   Home,
   LayoutDashboard,
@@ -9,9 +10,13 @@ import {
   ClipboardCheck,
   Network,
   FileText,
+  BookOpen,
   HelpCircle,
   Info,
   LogIn,
+  Moon,
+  Sun,
+  Monitor,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,7 +24,8 @@ const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'AI Knowledge Base', href: '/knowledge-base', icon: Database },
-  { name: 'Assessments', href: '/assessments', icon: ClipboardCheck },
+  { name: 'Compliance & Gap Analysis', href: '/assessments', icon: ClipboardCheck },
+  { name: 'Standards Library', href: '/standards-library', icon: BookOpen },
   { name: 'Knowledge Graph', href: '/knowledge-graph', icon: Network },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'FAQ', href: '/faq', icon: HelpCircle },
@@ -29,15 +35,30 @@ const navigation = [
 export default function Layout() {
   const location = useLocation()
   const { model } = useChatModel()
+  const { theme, setTheme, resolvedTheme } = useTheme()
+
+  const cycleTheme = () => {
+    if (theme === 'light') setTheme('dark')
+    else if (theme === 'dark') setTheme('system')
+    else setTheme('light')
+  }
 
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <aside className="w-64 border-r bg-slate-900 text-slate-100">
+      <aside className="w-64 border-r border-border bg-secondary text-secondary-foreground">
         <div className="flex h-full flex-col">
           {/* Brand */}
-          <div className="flex h-16 items-center border-b border-slate-800 px-6">
-            <Link to="/" className="text-2xl font-bold tracking-tight">
+          <div className="flex h-16 items-center border-b border-border px-6">
+            <Link
+              to="/"
+              className="flex items-center gap-3 text-2xl font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-secondary rounded"
+            >
+              <img
+                src="/marlowe.jpeg"
+                alt="Marlowe"
+                className="h-9 w-9 rounded object-cover"
+              />
               Marlowe
             </Link>
           </div>
@@ -55,10 +76,10 @@ export default function Layout() {
                   key={item.name}
                   to={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-secondary',
                     isActive
-                      ? 'bg-slate-800 text-white'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-secondary-foreground/80 hover:bg-primary/20 hover:text-secondary-foreground'
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -68,11 +89,24 @@ export default function Layout() {
             })}
           </nav>
 
-          {/* Login */}
-          <div className="border-t border-slate-800 p-3">
+          {/* Theme toggle & Login */}
+          <div className="border-t border-border p-3 space-y-1">
+            <button
+              type="button"
+              onClick={cycleTheme}
+              aria-label={`Theme: ${theme}. Current: ${resolvedTheme}. Click to cycle.`}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-secondary-foreground/80 transition-colors hover:bg-primary/20 hover:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-secondary"
+            >
+              {theme === 'light' && <Sun className="h-5 w-5" />}
+              {theme === 'dark' && <Moon className="h-5 w-5" />}
+              {theme === 'system' && <Monitor className="h-5 w-5" />}
+              {theme === 'light' && 'Light'}
+              {theme === 'dark' && 'Dark'}
+              {theme === 'system' && 'System'}
+            </button>
             <Link
               to="/login"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-secondary-foreground/80 transition-colors hover:bg-primary/20 hover:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-secondary"
             >
               <LogIn className="h-5 w-5" />
               Login

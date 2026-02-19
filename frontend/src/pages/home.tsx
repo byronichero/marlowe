@@ -16,11 +16,18 @@ export default function Home() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Marlowe Assistant</h1>
-        <p className="text-muted-foreground">
-          Ask about governance, frameworks, and your knowledge base. Uses the Marlowe system prompt and RAG.
-        </p>
+      <div className="flex items-center gap-3">
+        <img
+          src="/marlowe.jpeg"
+          alt="Marlowe"
+          className="h-12 w-12 rounded-lg object-cover"
+        />
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Marlowe Assistant</h1>
+          <p className="text-muted-foreground">
+            Ask about governance, frameworks, and your knowledge base. Uses the Marlowe system prompt and RAG.
+          </p>
+        </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <label htmlFor="chat-model" className="text-sm font-medium text-muted-foreground">

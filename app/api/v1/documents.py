@@ -4,13 +4,14 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from app.core.config import settings
 from app.services.ingest_service import ingest_docs, ingest_single_file
 from app.services.minio_client import upload_file
+from app.services.qdrant_service import delete_collection
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -130,6 +131,7 @@ async def _run_upload_job(
     content_type: str | None,
     object_key: str,
     doc_id: str,
+    framework_id: int | None = None,
 ) -> None:
     """Run in background: MinIO upload, ingest, then update job status."""
     _upload_jobs[job_id]["status"] = "running"
@@ -143,7 +145,9 @@ async def _run_upload_job(
             )
         except Exception as e:
             logger.warning("MinIO upload failed for %s: %s", filename, e)
-        result = await ingest_single_file(file_content=content, filename=filename)
+        result = await ingest_single_file(
+            file_content=content, filename=filename, framework_id=framework_id
+        )
         if result.get("ok"):
             _upload_jobs[job_id].update(
                 status="completed",
@@ -185,10 +189,13 @@ async def get_upload_job(job_id: str) -> JobStatusResponse:
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    framework_id: str | None = Form(None),
 ):
     """
     Upload a document: accept file and process in background (MinIO + extract, chunk, embed, Qdrant).
-    Returns 202 with job_id so you can leave the page; poll GET /documents/jobs/{job_id} for status.
+    If framework_id is provided, links the document to that framework for gap analysis evidence.
+    Pass framework_id as a form field (e.g. framework_id=1).
+    Returns 202 with job_id; poll GET /documents/jobs/{job_id} for status.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
@@ -205,6 +212,12 @@ async def upload_document(
         "id": None,
         "object_key": None,
     }
+    fw_id: int | None = None
+    if framework_id is not None and framework_id.strip():
+        try:
+            fw_id = int(framework_id)
+        except ValueError:
+            pass
     background_tasks.add_task(
         _run_upload_job,
         job_id,
@@ -213,6 +226,7 @@ async def upload_document(
         file.content_type,
         object_key,
         doc_id,
+        fw_id,
     )
     return JSONResponse(
         status_code=202,
@@ -232,6 +246,16 @@ class IngestResponse(BaseModel):
     chunks_ingested: int
     error: str | None = None
     errors: list[str] = []
+
+
+@router.delete("/collection", status_code=200)
+async def clear_qdrant_collection() -> dict:
+    """
+    Delete the Qdrant collection (clears all vectors and payloads).
+    Use before sharing a deployment or backup to remove licensed/copyrighted content.
+    """
+    deleted = delete_collection()
+    return {"ok": True, "deleted": deleted}
 
 
 @router.post("/ingest", response_model=IngestResponse)
