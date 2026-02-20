@@ -1,6 +1,6 @@
 """Frameworks CRUD API."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +11,19 @@ from app.models import Framework, Requirement
 from app.schemas import FrameworkCreate, FrameworkRead, FrameworkUpdate
 from app.services.graph_sync import delete_framework_from_neo4j, sync_framework_to_neo4j
 from app.services.qdrant_service import count_documents_for_framework
+from app.services.requirement_extraction_service import extract_and_save_requirements
 
 router = APIRouter()
+
+
+class ExtractRequirementsResponse(BaseModel):
+    """Response from requirement extraction."""
+
+    ok: bool
+    extracted: int
+    created: int
+    skipped: int
+    error: str | None = None
 
 
 class FrameworkLibraryItem(BaseModel):
@@ -106,6 +117,20 @@ async def create_framework(
         framework.description, framework.region, framework.framework_type,
     )
     return framework
+
+
+@router.post("/{framework_id}/extract-requirements", response_model=ExtractRequirementsResponse)
+async def extract_requirements(
+    framework_id: int,
+    db: AsyncSession = Depends(get_db),
+    model: str | None = Query(None, description="Ollama model to use (defaults to OLLAMA_MODEL)"),
+) -> ExtractRequirementsResponse:
+    """
+    Extract requirements from framework documents via LLM.
+    Uses document chunks in Qdrant. Skips duplicates by identifier.
+    """
+    result = await extract_and_save_requirements(db, framework_id, model=model)
+    return ExtractRequirementsResponse(**result)
 
 
 @router.get("/{framework_id}/evidence", response_model=FrameworkEvidenceResponse)

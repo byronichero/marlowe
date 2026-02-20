@@ -82,6 +82,30 @@ export default function Help() {
         ))}
       </div>
 
+      <Card id="trademark">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Trademark & License
+          </CardTitle>
+          <CardDescription>
+            Marlowe® is a registered trademark of GallowGlass AI
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            The name &quot;Marlowe&quot; and associated branding are trademarks of GallowGlass AI. The software may
+            be used under its open source license (e.g. Apache 2.0), but the name &quot;Marlowe&quot; may not be
+            used for forks, distributions, or services without permission. Forks and derivatives should use a
+            different name.
+          </p>
+          <p>
+            See <code className="rounded bg-muted px-1">LICENSE-TODO.md</code> in the project repository for
+            detailed license and trademark planning information.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

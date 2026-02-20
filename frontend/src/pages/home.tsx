@@ -39,9 +39,9 @@ export default function Home() {
           onChange={(e) => setModel(e.target.value)}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          {['granite3.2:latest', ...models.filter((m) => m !== 'granite3.2:latest')].map((m) => (
+          {['qwen3:latest', ...models.filter((m) => m !== 'qwen3:latest')].map((m) => (
             <option key={m} value={m}>
-              {m === 'granite3.2:latest' ? `${m} (default)` : m}
+              {m === 'qwen3:latest' ? `${m} (default)` : m}
             </option>
           ))}
         </select>

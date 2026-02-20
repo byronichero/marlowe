@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useChatModel } from '@/contexts/chat-model'
 import { api } from '@/lib/api'
 import type { Assessment, Framework, GapAnalysisReport, Requirement } from '@/types'
 import {
@@ -24,6 +25,7 @@ import {
   Calendar,
   ListChecks,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react'
 
 const REGION_OPTIONS = [
@@ -36,14 +38,28 @@ const REGION_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ]
 
+// ISO and NIST first—drives extraction patterns and crosswalk (ISO 42001 ↔ NIST 800-53)
 const FRAMEWORK_TYPE_OPTIONS = [
-  { value: '', label: 'Select type…' },
-  { value: 'Standard', label: 'Standard' },
-  { value: 'Regulation', label: 'Regulation' },
-  { value: 'Guideline', label: 'Guideline' },
-  { value: 'Framework', label: 'Framework' },
+  { value: '', label: 'Select type (required)…' },
+  { value: 'ISO', label: 'ISO (e.g. ISO/IEC 42001:2023)' },
+  { value: 'NIST', label: 'NIST (e.g. NIST 800-53)' },
   { value: 'Other', label: 'Other' },
 ]
+
+const FRAMEWORK_TEMPLATES = {
+  ISO: {
+    name: 'ISO/IEC 42001:2023',
+    slug: 'iso-42001-2023',
+    description: 'AI management system standard — clauses and Annex A controls',
+    type: 'ISO' as const,
+  },
+  NIST: {
+    name: 'NIST 800-53 Rev 5',
+    slug: 'nist-800-53-rev5',
+    description: 'Security and privacy controls for information systems',
+    type: 'NIST' as const,
+  },
+}
 
 function slugify(value: string): string {
   return value
@@ -55,6 +71,7 @@ function slugify(value: string): string {
 }
 
 export default function Assessments() {
+  const { model } = useChatModel()
   const [frameworks, setFrameworks] = useState<Framework[]>([])
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [assessments, setAssessments] = useState<Assessment[]>([])
@@ -92,6 +109,8 @@ export default function Assessments() {
   const [frameworkEvidence, setFrameworkEvidence] = useState<
     Record<number, { chunk_count: number; documents: string[]; has_evidence: boolean }>
   >({})
+  const [extractingFrameworkId, setExtractingFrameworkId] = useState<number | null>(null)
+  const [extractResult, setExtractResult] = useState<{ frameworkId: number; message: string } | null>(null)
 
   const hasFramework = frameworks.length > 0
   const hasRequirement = requirements.length >= 1
@@ -131,8 +150,8 @@ export default function Assessments() {
     setFrameworkEvidence(map)
   }
 
-  function openUploadStandard() {
-    setUploadFrameworkId(frameworks[0]?.id ?? '')
+  function openUploadStandard(frameworkId?: number) {
+    setUploadFrameworkId(frameworkId ?? '')
     setUploadFile(null)
     setUploadProgress(null)
     setUploadStandardOpen(true)
@@ -168,6 +187,8 @@ export default function Assessments() {
           if (job.status === 'completed') {
             refreshFrameworkEvidence()
             setUploadStandardOpen(false)
+            setUploadFrameworkId('')
+            setUploadFile(null)
           }
         } catch {
           // Keep polling
@@ -178,12 +199,21 @@ export default function Assessments() {
     }
   }, [uploadProgress, uploadFrameworkId])
 
-  function openAddFramework() {
-    setFormName('')
-    setFormSlug('')
-    setFormDescription('')
-    setFormRegion('')
-    setFormFrameworkType('')
+  function openAddFramework(template?: 'ISO' | 'NIST') {
+    if (template) {
+      const t = FRAMEWORK_TEMPLATES[template]
+      setFormName(t.name)
+      setFormSlug(t.slug)
+      setFormDescription(t.description)
+      setFormRegion('Global')
+      setFormFrameworkType(t.type)
+    } else {
+      setFormName('')
+      setFormSlug('')
+      setFormDescription('')
+      setFormRegion('')
+      setFormFrameworkType('')
+    }
     setAddFrameworkError(null)
     setAddFrameworkOpen(true)
   }
@@ -197,12 +227,17 @@ export default function Assessments() {
     setAddFrameworkError(null)
     const name = formName.trim()
     const slug = formSlug.trim()
+    const fwType = formFrameworkType.trim()
     if (!name) {
       setAddFrameworkError('Name is required')
       return
     }
     if (!slug) {
       setAddFrameworkError('Slug is required')
+      return
+    }
+    if (!fwType) {
+      setAddFrameworkError('Framework type (ISO or NIST) is required for extraction and crosswalk')
       return
     }
     setAddFrameworkLoading(true)
@@ -212,7 +247,7 @@ export default function Assessments() {
         slug,
         description: formDescription.trim() || undefined,
         region: formRegion || undefined,
-        framework_type: formFrameworkType || undefined,
+        framework_type: fwType,
       })
       setAddFrameworkOpen(false)
       refreshFrameworks()
@@ -301,6 +336,41 @@ export default function Assessments() {
       .finally(() => setIsLoadingAssessments(false))
   }, [])
 
+  async function handleExtractRequirements(frameworkId: number) {
+    setExtractingFrameworkId(frameworkId)
+    setExtractResult(null)
+    try {
+      const result = await api.extractRequirements(frameworkId, model)
+      refreshRequirements()
+      if (result.ok) {
+        if (result.created > 0) {
+          setExtractResult({
+            frameworkId,
+            message: `Created ${result.created} requirement${result.created === 1 ? '' : 's'}${result.skipped > 0 ? `, ${result.skipped} already existed` : ''}`,
+          })
+        } else if (result.error) {
+          setExtractResult({ frameworkId, message: result.error })
+        } else {
+          setExtractResult({
+            frameworkId,
+            message: result.skipped > 0 ? 'All requirements already exist' : 'No requirements extracted',
+          })
+        }
+      } else {
+        setExtractResult({ frameworkId, message: result.error ?? 'Extraction failed' })
+      }
+      setTimeout(() => setExtractResult(null), 6000)
+    } catch (err) {
+      setExtractResult({
+        frameworkId,
+        message: err instanceof Error ? err.message : 'Extraction failed',
+      })
+      setTimeout(() => setExtractResult(null), 6000)
+    } finally {
+      setExtractingFrameworkId(null)
+    }
+  }
+
   async function handleRunGapAnalysis(frameworkId: number) {
     setRunningFrameworkId(frameworkId)
     setReport(null)
@@ -361,21 +431,31 @@ export default function Assessments() {
               First step required
             </CardTitle>
             <CardDescription>
-              Before running gap analysis: add a framework, upload the standard document, and add
-              at least one requirement.
+              Before running gap analysis: add a framework, upload the standard document, then
+              extract requirements (AI) or add them manually. At least one requirement is needed.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row flex-wrap gap-4">
             {!hasFramework && (
               <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
-                <h4 className="font-medium mb-1">1. Add a framework</h4>
+                <h4 className="font-medium mb-1">1. Add a framework (ISO or NIST)</h4>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Add the standard or regulation you want to assess (e.g. ISO/IEC 42001:2023).
+                  Start with ISO 42001 or NIST 800-53 for extraction and crosswalk. Choose the type
+                  that matches your standard document.
                 </p>
-                <Button onClick={openAddFramework}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Framework
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => openAddFramework('ISO')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add ISO 42001
+                  </Button>
+                  <Button onClick={() => openAddFramework('NIST')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add NIST 800-53
+                  </Button>
+                  <Button variant="outline" onClick={() => openAddFramework()}>
+                    Add other framework
+                  </Button>
+                </div>
               </div>
             )}
             {hasFramework && !hasEvidence && (
@@ -385,7 +465,7 @@ export default function Assessments() {
                   Upload the PDF or document for this framework so gap analysis has evidence to
                   assess.
                 </p>
-                <Button onClick={openUploadStandard} disabled={frameworks.length === 0}>
+                <Button onClick={() => openUploadStandard()} disabled={frameworks.length === 0}>
                   <FileUp className="mr-2 h-4 w-4" />
                   Upload Standard
                 </Button>
@@ -423,7 +503,7 @@ export default function Assessments() {
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={openUploadStandard} variant="outline" size="sm">
+              <Button onClick={() => openUploadStandard()} variant="outline" size="sm">
                 <FileUp className="mr-2 h-4 w-4" />
                 Upload Standard
               </Button>
@@ -431,7 +511,7 @@ export default function Assessments() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Requirement
               </Button>
-              <Button onClick={openAddFramework} size="sm">
+              <Button onClick={() => openAddFramework()} size="sm">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Framework
               </Button>
@@ -494,20 +574,49 @@ export default function Assessments() {
                         )}
                       </div>
                     </div>
-                    <Button
-                      className="mt-4"
-                      size="sm"
-                      onClick={() => handleRunGapAnalysis(fw.id)}
-                      disabled={runningFrameworkId !== null || !canRunGap}
-                      title={gapDisabledTitle}
-                    >
-                      {runningFrameworkId === fw.id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Play className="mr-2 h-4 w-4" />
+                    <div className="mt-4 flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openUploadStandard(fw.id)}
+                        title={`Upload standard document for ${fw.name}`}
+                      >
+                        <FileUp className="mr-2 h-4 w-4" />
+                        Upload
+                      </Button>
+                      {hasFwEvidence && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleExtractRequirements(fw.id)}
+                          disabled={extractingFrameworkId !== null}
+                          title="Extract requirements from uploaded standard document using AI"
+                        >
+                          {extractingFrameworkId === fw.id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="mr-2 h-4 w-4" />
+                          )}
+                          Extract Requirements
+                        </Button>
                       )}
-                      Run Gap Analysis
-                    </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleRunGapAnalysis(fw.id)}
+                        disabled={runningFrameworkId !== null || !canRunGap}
+                        title={gapDisabledTitle}
+                      >
+                        {runningFrameworkId === fw.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="mr-2 h-4 w-4" />
+                        )}
+                        Run Gap Analysis
+                      </Button>
+                    </div>
+                    {extractResult?.frameworkId === fw.id && (
+                      <p className="mt-2 text-xs text-muted-foreground">{extractResult.message}</p>
+                    )}
                   </div>
                 )
               })}
@@ -569,7 +678,8 @@ export default function Assessments() {
           <DialogHeader>
             <DialogTitle>Add Framework</DialogTitle>
             <DialogDescription>
-              Create a new compliance framework. Name and slug are required.
+              Choose ISO or NIST first—this drives extraction patterns and crosswalk. ISO 42001 and
+              NIST 800-53 are the primary supported frameworks.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitAddFramework} className="space-y-4 mt-2">
@@ -578,6 +688,23 @@ export default function Assessments() {
                 {addFrameworkError}
               </div>
             )}
+            <div className="space-y-2">
+              <label htmlFor="framework-type" className="text-sm font-medium">
+                Framework type *
+              </label>
+              <Select
+                id="framework-type"
+                value={formFrameworkType}
+                onChange={(e) => setFormFrameworkType(e.target.value)}
+                required
+              >
+                {FRAMEWORK_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value || 'empty'} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
             <div className="space-y-2">
               <label htmlFor="framework-name" className="text-sm font-medium">
                 Name *
@@ -631,22 +758,6 @@ export default function Assessments() {
                 onChange={(e) => setFormRegion(e.target.value)}
               >
                 {REGION_OPTIONS.map((opt) => (
-                  <option key={opt.value || 'empty'} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="framework-type" className="text-sm font-medium">
-                Framework Type
-              </label>
-              <Select
-                id="framework-type"
-                value={formFrameworkType}
-                onChange={(e) => setFormFrameworkType(e.target.value)}
-              >
-                {FRAMEWORK_TYPE_OPTIONS.map((opt) => (
                   <option key={opt.value || 'empty'} value={opt.value}>
                     {opt.label}
                   </option>
@@ -764,13 +875,23 @@ export default function Assessments() {
       </Dialog>
 
       {/* Upload standard document dialog */}
-      <Dialog open={uploadStandardOpen} onOpenChange={setUploadStandardOpen}>
+      <Dialog
+        open={uploadStandardOpen}
+        onOpenChange={(open) => {
+          setUploadStandardOpen(open)
+          if (!open) {
+            setUploadProgress(null)
+            setUploadFrameworkId('')
+            setUploadFile(null)
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Standard Document</DialogTitle>
             <DialogDescription>
-              Upload the standard document (e.g. ISO PDF) for a framework. It becomes the evidence
-              source for gap analysis.
+              Upload the standard document for the selected framework. The document is linked only to
+              that framework for extraction and gap analysis—select the correct one before uploading.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadStandard} className="space-y-4 mt-2">
@@ -843,6 +964,7 @@ export default function Assessments() {
                 onClick={() => {
                   setUploadStandardOpen(false)
                   setUploadProgress(null)
+                  setUploadFrameworkId('')
                 }}
                 disabled={['pending', 'running'].includes(uploadProgress?.status ?? '')}
               >

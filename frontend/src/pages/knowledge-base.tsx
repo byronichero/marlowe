@@ -1,9 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
-import { Upload, FileText, Search, Loader2, Download, CheckCircle2, XCircle } from 'lucide-react'
+import { Upload, FileText, Search, Loader2, Download, CheckCircle2, XCircle, Eye, FileDown } from 'lucide-react'
 
 interface DocFile {
   name: string
@@ -21,12 +27,19 @@ interface UploadJob {
 
 type UploadStatusState = { type: 'success'; message: string } | { type: 'error'; message: string } | { type: 'loading'; message: string } | null
 
+const PREVIEW_EXTENSIONS = ['.pdf', '.docx', '.pptx', '.xlsx', '.html', '.htm', '.csv', '.txt', '.md', '.markdown']
+
 export default function KnowledgeBase() {
   const [documents, setDocuments] = useState<DocFile[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [uploadStatus, setUploadStatus] = useState<UploadStatusState>(null)
   const [uploadProgress, setUploadProgress] = useState<UploadJob | null>(null)
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerDoc, setViewerDoc] = useState<DocFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const canPreview = (path: string) =>
+    PREVIEW_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(ext))
 
   useEffect(() => {
     loadDocuments()
@@ -253,20 +266,69 @@ export default function KnowledgeBase() {
                       <p className="text-sm text-muted-foreground">{formatSize(doc.size)}</p>
                     </div>
                   </div>
-                  <a
-                    href={`/api/v1/documents/download?path=${encodeURIComponent(doc.path)}`}
-                    download
-                    className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Download
-                  </a>
+                  <div className="flex items-center gap-2">
+                    {canPreview(doc.path) && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setViewerDoc(doc)
+                            setViewerOpen(true)
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <a
+                          href={`/api/v1/documents/download-md?path=${encodeURIComponent(doc.path)}`}
+                          className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <FileDown className="h-4 w-4 mr-1" />
+                          Download MD
+                        </a>
+                      </>
+                    )}
+                    <a
+                      href={`/api/v1/documents/download?path=${encodeURIComponent(doc.path)}`}
+                      download
+                      className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Document viewer modal */}
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center justify-between gap-4">
+              <span>{viewerDoc?.name ?? 'Document preview'}</span>
+              {viewerDoc && canPreview(viewerDoc.path) && (
+                <a
+                  href={`/api/v1/documents/download-md?path=${encodeURIComponent(viewerDoc.path)}`}
+                  className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium"
+                >
+                  <FileDown className="h-4 w-4 mr-1" />
+                  Download MD
+                </a>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <iframe
+            src={viewerDoc ? `/api/v1/documents/preview?path=${encodeURIComponent(viewerDoc.path)}` : ''}
+            title="Document preview"
+            className="flex-1 w-full min-h-0 rounded border"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

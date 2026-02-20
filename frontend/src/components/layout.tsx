@@ -59,7 +59,7 @@ export default function Layout() {
                 alt="Marlowe"
                 className="h-9 w-9 rounded object-cover"
               />
-              Marlowe
+              Marlowe®
             </Link>
           </div>
 
@@ -111,6 +111,13 @@ export default function Layout() {
               <LogIn className="h-5 w-5" />
               Login
             </Link>
+            <p className="px-3 pt-2 text-[10px] text-muted-foreground/80">
+              Marlowe® is a registered trademark of GallowGlass AI.{' '}
+              <Link to="/help" className="underline hover:text-muted-foreground">
+                See Help
+              </Link>{' '}
+              for license and trademark information.
+            </p>
           </div>
         </div>
       </aside>

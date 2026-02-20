@@ -1,10 +1,12 @@
-"""Document processing service – Docling only for all parsing and text extraction."""
+"""Document processing service – Docling for parsing, preview (HTML), and Markdown export."""
 
+import csv
 import logging
 import tempfile
 from pathlib import Path
 from typing import BinaryIO
 
+import markdown
 from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -56,3 +58,66 @@ def extract_text_from_file(
             finally:
                 Path(tmp.name).unlink(missing_ok=True)
     return result.document.export_to_markdown()
+
+
+# Extensions supported for preview and MD export (Docling + CSV + text)
+DOCLING_EXTENSIONS = {".pdf", ".docx", ".pptx", ".xlsx", ".html", ".htm"}
+TEXT_EXTENSIONS = {".md", ".markdown", ".txt"}
+CSV_EXTENSIONS = {".csv"}
+PREVIEW_EXTENSIONS = DOCLING_EXTENSIONS | TEXT_EXTENSIONS | CSV_EXTENSIONS
+
+
+def _csv_to_markdown(file_path: Path) -> str:
+    """Convert CSV to Markdown table."""
+    rows: list[list[str]] = []
+    with open(file_path, newline="", encoding="utf-8", errors="replace") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            rows.append(row)
+    if not rows:
+        return ""
+    # Header row, separator, data rows
+    lines: list[str] = []
+    lines.append("| " + " | ".join(str(c) for c in rows[0]) + " |")
+    lines.append("| " + " | ".join("---" for _ in rows[0]) + " |")
+    for row in rows[1:]:
+        lines.append("| " + " | ".join(str(c) for c in row) + " |")
+    return "\n".join(lines)
+
+
+def _text_to_markdown(file_path: Path) -> str:
+    """Read plain text as Markdown (code block for raw)."""
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    # If looks like code/logs, wrap in code block
+    if any(c in text[:500] for c in ["{", "}", "import ", "def ", "<?php"]):
+        return f"```\n{text}\n```"
+    return text
+
+
+def document_to_markdown(file_path: Path) -> str:
+    """
+    Convert a document to Markdown.
+    Docling for PDF/DOCX/PPTX/XLSX/HTML; CSV to table; TXT/MD as text.
+    """
+    ext = file_path.suffix.lower()
+    if ext in CSV_EXTENSIONS:
+        return _csv_to_markdown(file_path)
+    if ext in TEXT_EXTENSIONS:
+        return _text_to_markdown(file_path)
+    if ext in DOCLING_EXTENSIONS:
+        return extract_text_from_file(file_path=file_path)
+    return ""
+
+
+def document_to_html(file_path: Path) -> str:
+    """Convert document to HTML for preview. Uses Markdown as intermediate."""
+    md = document_to_markdown(file_path)
+    if not md.strip():
+        return "<p class='text-muted-foreground'>No content extracted.</p>"
+    html_body = markdown.markdown(md, extensions=["tables", "fenced_code", "nl2br"])
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{{font-family:system-ui,sans-serif;max-width:800px;margin:1rem auto;padding:0 1rem;line-height:1.6;}}
+table{{border-collapse:collapse;width:100%;}} th,td{{border:1px solid #ddd;padding:.5rem;text-align:left;}}
+th{{background:#f5f5f5;}} pre{{background:#f5f5f5;padding:1rem;overflow-x:auto;}}</style>
+</head><body>{html_body}</body></html>"""

@@ -1,11 +1,17 @@
-"""Documents API – list docs folder, download, upload (single-file ingest to Qdrant)."""
+"""Documents API – list docs folder, download, preview (HTML), download MD, upload."""
 
 import logging
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+
+from app.services.document_service import (
+    PREVIEW_EXTENSIONS,
+    document_to_html,
+    document_to_markdown,
+)
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -68,6 +74,21 @@ def _resolve_docs_root() -> Path:
     return p if p.is_absolute() else Path.cwd() / p
 
 
+def _resolve_doc_path(path: str) -> Path:
+    """Validate path and return resolved full path. Raises HTTPException if invalid."""
+    if ".." in path or path.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    root = _resolve_docs_root().resolve()
+    full = (root / path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="File not found")
+    if not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return full
+
+
 class DocsFolderItem(BaseModel):
     """A file in the docs folder (for list and download)."""
 
@@ -102,19 +123,45 @@ async def list_docs_folder() -> list[DocsFolderItem]:
 @router.get("/download")
 async def download_docs_file(path: str = Query(..., description="Relative path within docs folder")) -> FileResponse:
     """Download a file from the docs folder. Path must be relative (no '..')."""
-    if ".." in path or path.startswith("/"):
-        raise HTTPException(status_code=400, detail="Invalid path")
-    root = _resolve_docs_root().resolve()
-    full = (root / path).resolve()
-    try:
-        full.relative_to(root)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="File not found")
-    if not full.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
+    full = _resolve_doc_path(path)
     try:
         return FileResponse(path=str(full), filename=full.name)
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/preview", response_class=HTMLResponse)
+async def preview_document(path: str = Query(..., description="Relative path within docs folder")) -> str:
+    """Preview document as HTML (Docling, CSV, TXT → Markdown → HTML)."""
+    full = _resolve_doc_path(path)
+    if full.suffix.lower() not in PREVIEW_EXTENSIONS:
+        ext = full.suffix.lower() or "(none)"
+        raise HTTPException(status_code=400, detail=f"Preview not supported for {ext}")
+    try:
+        return document_to_html(full)
+    except Exception as e:
+        logger.exception("Preview failed for %s", path)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/download-md")
+async def download_markdown(path: str = Query(..., description="Relative path within docs folder")) -> Response:
+    """Download document content as Markdown (.md)."""
+    full = _resolve_doc_path(path)
+    if full.suffix.lower() not in PREVIEW_EXTENSIONS:
+        ext = full.suffix.lower() or "(none)"
+        raise HTTPException(status_code=400, detail=f"MD export not supported for {ext}")
+    try:
+        md = document_to_markdown(full)
+        md_bytes = md.encode("utf-8")
+        md_name = full.stem + ".md"
+        return Response(
+            content=md_bytes,
+            media_type="text/markdown",
+            headers={"Content-Disposition": f'attachment; filename="{md_name}"'},
+        )
+    except Exception as e:
+        logger.exception("Download MD failed for %s", path)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

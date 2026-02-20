@@ -45,6 +45,13 @@ export const api = {
     fetchAPI<{ framework_id: number; chunk_count: number; documents: string[]; has_evidence: boolean }>(
       `frameworks/${frameworkId}/evidence`
     ),
+  extractRequirements: (frameworkId: number, model?: string) => {
+    const params = model ? `?model=${encodeURIComponent(model)}` : ''
+    return fetchAPI<{ ok: boolean; extracted: number; created: number; skipped: number; error?: string }>(
+      `frameworks/${frameworkId}/extract-requirements${params}`,
+      { method: 'POST' }
+    )
+  },
 
   // Documents (for framework-linked uploads)
   uploadFrameworkDocument: async (frameworkId: number, file: File) => {
