@@ -5,3 +5,16 @@ scrape_configs:
   - job_name: otel-collector
     static_configs:
       - targets: ["otel-collector:9464"]
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+  - job_name: redis
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+  - job_name: qdrant
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["qdrant:6333"]
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]

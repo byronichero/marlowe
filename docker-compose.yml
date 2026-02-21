@@ -148,6 +148,34 @@ services:
       - prometheus
       - tempo
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    environment:
+      - DATA_SOURCE_NAME=postgresql://marlowe:marlowe@postgres:5432/marlowe?sslmode=disable
+    ports:
+      - "5021:9187"
+    depends_on:
+      - postgres
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.63.0
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - "5022:9121"
+    depends_on:
+      - redis
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    ports:
+      - "5020:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
 volumes:
   postgres_data:
   qdrant_data:
