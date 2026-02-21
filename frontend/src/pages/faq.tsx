@@ -33,8 +33,8 @@ export default function Faq() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Frequently Asked Questions</h1>
-        <p className="text-muted-foreground">Common questions about Marlowe</p>
+        <h1 className="text-4xl font-bold tracking-tight">Frequently Asked Questions</h1>
+        <p className="text-base text-muted-foreground">Common questions about Marlowe</p>
       </div>
 
       <div className="space-y-4">

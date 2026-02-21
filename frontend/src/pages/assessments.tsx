@@ -466,8 +466,8 @@ export default function Assessments() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Compliance Frameworks & Gap Analysis</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-4xl font-bold tracking-tight">Compliance Frameworks & Gap Analysis</h1>
+        <p className="text-base text-muted-foreground mt-1">
           AI standards (e.g. ISO/IEC 42001:2023) and run agent-driven gap analysis like a
           cybersecurity audit
         </p>

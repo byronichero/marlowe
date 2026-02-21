@@ -58,7 +58,7 @@ export default function Home() {
           className="h-12 w-12 rounded-lg object-cover"
         />
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Marlowe Assistant</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Marlowe Assistant</h1>
           <p className="text-muted-foreground">
             Ask about governance, frameworks, and your knowledge base. Uses the Marlowe system prompt and RAG.
           </p>
@@ -180,7 +180,7 @@ export default function Home() {
             <CardTitle>About Marlowe</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-base text-muted-foreground leading-relaxed">
               Marlowe supports <strong>AI governance</strong>, responsible AI, privacy, and global
               regulations. Use frameworks (e.g. EU AI Act, GDPR, NIST AI RMF), run assessments,
               attach evidence, and explore the knowledge graph. Framework-agnostic.

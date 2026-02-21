@@ -41,8 +41,8 @@ export default function AboutMarlowe() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Christopher Marlowe</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-4xl font-bold tracking-tight">Christopher Marlowe</h1>
+        <p className="text-base text-muted-foreground mt-1">
           Elizabethan playwright, poet, and namesake of Marlowe®
         </p>
       </div>

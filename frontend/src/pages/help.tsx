@@ -53,8 +53,8 @@ export default function Help() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Help & Documentation</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-4xl font-bold tracking-tight">Help & Documentation</h1>
+        <p className="text-base text-muted-foreground">
           Learn how to use Marlowe's features effectively
         </p>
       </div>

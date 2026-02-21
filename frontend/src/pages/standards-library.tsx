@@ -46,11 +46,11 @@ export default function StandardsLibrary() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <BookOpen className="h-8 w-8" />
+        <h1 className="text-4xl font-bold tracking-tight flex items-center gap-2">
+          <BookOpen className="h-9 w-9" />
           Standards Library
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-base text-muted-foreground mt-1">
           Catalog of compliance frameworks with evidence status, documents, and requirements. Use this
           to see which standards are ready for gap analysis.
         </p>

@@ -186,8 +186,8 @@ export default function KnowledgeGraph() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Knowledge Graph</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-4xl font-bold tracking-tight">Knowledge Graph</h1>
+        <p className="text-base text-muted-foreground mt-1">
           Explore relationships between frameworks, requirements, and crosswalk mappings between
           standards
         </p>

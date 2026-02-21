@@ -6,8 +6,8 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-4xl font-bold tracking-tight">Reports</h1>
+        <p className="text-base text-muted-foreground">
           Generate reports by assessment, framework, or date range
         </p>
       </div>
