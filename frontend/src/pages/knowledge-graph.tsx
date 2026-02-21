@@ -24,6 +24,30 @@ interface GraphApiResponse {
   edges: GraphApiEdge[]
 }
 
+function clusterFrameworks(
+  instance: { clusterByConnection?: (nodeId: string, options?: unknown) => void },
+  nodes: GraphApiNode[]
+): void {
+  if (!instance.clusterByConnection) return
+  const frameworkLabels = new Map(
+    nodes.filter((n) => (n.type ?? '').toLowerCase() === 'framework').map((n) => [n.id, n.label])
+  )
+  frameworkLabels.forEach((label, frameworkId) => {
+    instance.clusterByConnection?.(frameworkId, {
+      joinCondition: (nodeOptions: { group?: string; id?: string }) =>
+        nodeOptions.group === 'requirement' && nodeOptions.id !== frameworkId,
+      clusterNodeProperties: {
+        id: `cluster_${frameworkId}`,
+        label: `${label} requirements`,
+        shape: 'dot',
+        size: 30,
+        color: { background: '#fde047', border: '#f59e0b' },
+        font: { size: 14, color: '#7c2d12' },
+      },
+    })
+  })
+}
+
 interface CrosswalkMapping {
   requirement_a: { id: number; identifier: string; title: string; description?: string }
   requirement_b: { id: number; identifier: string; title: string; description?: string }
@@ -41,9 +65,13 @@ export default function KnowledgeGraph() {
   const networkRef = useRef<{
     setData: (data: { nodes: unknown[]; edges: unknown[] }) => void
     setOptions?: (options: unknown) => void
+    on?: (event: string, callback: (params: { nodes?: string[] }) => void) => void
+    openCluster?: (clusterNodeId: string) => void
     once?: (event: string, callback: () => void) => void
+    clusterByConnection?: (nodeId: string, options?: unknown) => void
     destroy: () => void
   } | null>(null)
+  const expandClustersOnClickRef = useRef(true)
   const [frameworks, setFrameworks] = useState<Framework[]>([])
   const [isLoadingGraph, setIsLoadingGraph] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -53,6 +81,8 @@ export default function KnowledgeGraph() {
   const [isLoadingCrosswalk, setIsLoadingCrosswalk] = useState(false)
   const [crosswalkError, setCrosswalkError] = useState<string | null>(null)
   const [hasGraphData, setHasGraphData] = useState(false)
+  const [showLabelsOnHover, setShowLabelsOnHover] = useState(true)
+  const [expandClustersOnClick, setExpandClustersOnClick] = useState(true)
 
   async function loadGraph() {
     setIsLoadingGraph(true)
@@ -62,7 +92,8 @@ export default function KnowledgeGraph() {
       if (containerRef.current && data?.nodes?.length) {
         const visNodes = data.nodes.map((n) => ({
           id: n.id,
-          label: n.label,
+          label:
+            showLabelsOnHover && (n.type ?? '').toLowerCase() !== 'framework' ? '' : n.label,
           group: n.type?.toLowerCase() ?? 'node',
           title: n.label,
         }))
@@ -75,6 +106,7 @@ export default function KnowledgeGraph() {
 
         if (networkRef.current) {
           networkRef.current.setData(visData)
+          clusterFrameworks(networkRef.current, data.nodes)
         } else {
           const visNetwork = await import('vis-network')
           // @ts-expect-error - CSS module
@@ -103,9 +135,20 @@ export default function KnowledgeGraph() {
           })
           networkRef.current = instance
           const visInstance = instance as unknown as {
+            on?: (event: string, callback: (params: { nodes?: string[] }) => void) => void
+            openCluster?: (clusterNodeId: string) => void
             once?: (event: string, callback: () => void) => void
             setOptions?: (options: unknown) => void
+            clusterByConnection?: (nodeId: string, options?: unknown) => void
           }
+          clusterFrameworks(visInstance, data.nodes)
+          visInstance.on?.('selectNode', (params) => {
+            if (!expandClustersOnClickRef.current) return
+            const selected = params?.nodes?.[0]
+            if (selected?.startsWith('cluster_')) {
+              visInstance.openCluster?.(selected)
+            }
+          })
           visInstance.once?.('stabilizationIterationsDone', () => {
             visInstance.setOptions?.({ physics: { enabled: false } })
           })
@@ -182,6 +225,14 @@ export default function KnowledgeGraph() {
       networkRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    expandClustersOnClickRef.current = expandClustersOnClick
+  }, [expandClustersOnClick])
+
+  useEffect(() => {
+    if (hasGraphData) loadGraph()
+  }, [showLabelsOnHover])
 
   return (
     <div className="space-y-6">
@@ -323,14 +374,34 @@ export default function KnowledgeGraph() {
                 Frameworks and requirements from Neo4j. Crosswalk mappings appear as dashed edges.
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
-              {isSyncing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-2 h-4 w-4" />
-              )}
-              Sync from DB
-            </Button>
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <label className="flex items-center gap-2 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={showLabelsOnHover}
+                  onChange={(e) => setShowLabelsOnHover(e.target.checked)}
+                />
+                <span>Labels on hover</span>
+              </label>
+              <label className="flex items-center gap-2 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={expandClustersOnClick}
+                  onChange={(e) => setExpandClustersOnClick(e.target.checked)}
+                />
+                <span>Expand clusters on click</span>
+              </label>
+              <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
+                {isSyncing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Sync from DB
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="h-[calc(100%-5rem)]">

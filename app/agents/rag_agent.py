@@ -10,7 +10,6 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 
 from app.core.config import settings
 from app.services.chat_service import build_rag_prompt
-from app.services.observability import get_langfuse_handler
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +52,6 @@ async def _invoke_chat(
         lc_messages.append(SystemMessage(content=system_prompt))
     lc_messages.append(HumanMessage(content=user_content))
     base_url = settings.ollama_host.rstrip("/")
-    handler = get_langfuse_handler()
-    callbacks = [handler] if handler else None
     for attempt_model in [chosen_model] + ([fallback_model] if fallback_model else []):
         if not attempt_model:
             continue
@@ -63,8 +60,6 @@ async def _invoke_chat(
                 base_url=base_url,
                 model=attempt_model,
                 stream=True,
-                callbacks=callbacks,
-                tags=["marlowe", "rag_chat" if system_prompt else "free_chat"],
             )
             response = await chat.ainvoke(lc_messages)
             return {"messages": [response]}

@@ -13,6 +13,7 @@ import {
   BookOpen,
   HelpCircle,
   Info,
+  Activity,
   Menu,
   LogIn,
   Moon,
@@ -47,6 +48,10 @@ const navigationSections = [
       { name: 'FAQ', href: '/faq', icon: HelpCircle },
       { name: 'Help', href: '/help', icon: Info },
     ],
+  },
+  {
+    label: 'Admin',
+    items: [{ name: 'Observability', href: '/admin/observability', icon: Activity }],
   },
 ]
 

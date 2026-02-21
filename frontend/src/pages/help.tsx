@@ -60,8 +60,8 @@ export default function Help() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {helpSections.map((section, index) => (
-          <Card key={index}>
+        {helpSections.map((section) => (
+          <Card key={section.title}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <section.icon className="h-5 w-5 text-primary" />
@@ -71,8 +71,8 @@ export default function Help() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
-                {section.items.map((item, itemIndex) => (
-                  <li key={itemIndex} className="flex items-start gap-2 text-sm">
+                {section.items.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm">
                     <span className="text-primary mt-1">•</span>
                     <span>{item}</span>
                   </li>
@@ -159,6 +159,7 @@ export default function Help() {
           </div>
         </CardContent>
       </Card>
+
     </div>
   )
 }

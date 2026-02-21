@@ -45,18 +45,18 @@ class Settings(BaseSettings):
     ollama_fallback_model: str = "granite3.2:latest"  # used if requested model returns 404 (not pulled)
     ollama_api_timeout: int = 600  # seconds; long prompts/RAG can be slow
 
-    # Langfuse (agent observability)
-    langfuse_public_key: str | None = None
-    langfuse_secret_key: str | None = None
-    langfuse_host: str = "https://cloud.langfuse.com"
-    langfuse_enabled: bool = True
-
     # MinIO / S3-compatible
     minio_endpoint: str = "host.docker.internal:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     minio_secure: bool = False
     minio_bucket: str = "marlowe"
+
+    # OpenTelemetry (local observability)
+    otel_enabled: bool = True
+    otel_service_name: str = "marlowe-api"
+    otel_exporter_otlp_endpoint: str = "http://otel-collector:4317"
+    otel_exporter_otlp_insecure: bool = True
 
     # Optional: path to credentials file (overrides env if present)
     credentials_file: str | None = None

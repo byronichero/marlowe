@@ -12,6 +12,7 @@ from app.agents.rag_agent import graph, graph_free
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import init_db
+from app.services.otel import init_otel
 
 # Main chat uses Marlowe system prompt + RAG; side popup uses plain model (free_chat_agent).
 MARLOWE_AGENT = LangGraphAGUIAgent(
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    init_otel(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

@@ -27,6 +27,10 @@ services:
       - MINIO_SECURE=false
       - MINIO_BUCKET=marlowe
       - SECRET_KEY=change-me-in-production
+      - OTEL_ENABLED=true
+      - OTEL_SERVICE_NAME=marlowe-api
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_INSECURE=true
     env_file:
       - .env
     volumes:
@@ -39,6 +43,8 @@ services:
       qdrant:
         condition: service_started
       neo4j:
+        condition: service_started
+      otel-collector:
         condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -100,7 +106,50 @@ services:
     volumes:
       - neo4j_data:/data
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.99.0
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otel-collector.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - tempo
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "5018:3200"
+      - "4317"
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    command: ["--config.file=/etc/prometheus/prometheus.yaml"]
+    volumes:
+      - ./observability/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+    ports:
+      - "5019:9090"
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "5017:3000"
+    depends_on:
+      - prometheus
+      - tempo
+
 volumes:
   postgres_data:
   qdrant_data:
   neo4j_data:
+  tempo_data:
