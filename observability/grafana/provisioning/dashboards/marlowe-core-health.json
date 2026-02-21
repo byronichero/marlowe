@@ -111,8 +111,8 @@
       "gridPos": { "x": 0, "y": 11, "w": 12, "h": 7 },
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{image!=\"\"}[5m]))",
-          "legendFormat": "cpu_seconds_total"
+          "expr": "sum(rate(container_cpu_system_seconds_total[5m]))",
+          "legendFormat": "cpu_system_seconds_total"
         }
       ]
     },
@@ -126,6 +126,32 @@
         {
           "expr": "sum(container_memory_working_set_bytes{image!=\"\"})",
           "legendFormat": "memory_bytes"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "CPU by Service (backend/qdrant/postgres/redis)",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_system_seconds_total{container_label_com_docker_compose_service=~\"backend|qdrant|postgres|redis\"}[5m]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Memory by Service (backend/qdrant/postgres/redis)",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{image!=\"\",container_label_com_docker_compose_service=~\"backend|qdrant|postgres|redis\"})",
+          "legendFormat": "{{container_label_com_docker_compose_service}}"
         }
       ]
     }
