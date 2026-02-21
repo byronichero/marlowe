@@ -38,7 +38,12 @@ interface CrosswalkResponse {
 
 export default function KnowledgeGraph() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const networkRef = useRef<{ setData: (data: { nodes: unknown[]; edges: unknown[] }) => void; destroy: () => void } | null>(null)
+  const networkRef = useRef<{
+    setData: (data: { nodes: unknown[]; edges: unknown[] }) => void
+    setOptions?: (options: unknown) => void
+    once?: (event: string, callback: () => void) => void
+    destroy: () => void
+  } | null>(null)
   const [frameworks, setFrameworks] = useState<Framework[]>([])
   const [isLoadingGraph, setIsLoadingGraph] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -75,7 +80,7 @@ export default function KnowledgeGraph() {
           // @ts-expect-error - CSS module
           await import('vis-network/styles/vis-network.min.css')
           const VisNetwork = visNetwork.Network as new (a: HTMLElement, b: unknown, c?: unknown) => { setData: (d: unknown) => void; destroy: () => void }
-          networkRef.current = new VisNetwork(containerRef.current, visData, {
+          const instance = new VisNetwork(containerRef.current, visData, {
             nodes: {
               shape: 'dot',
               font: { size: 12 },
@@ -92,8 +97,17 @@ export default function KnowledgeGraph() {
                 springLength: 150,
                 springConstant: 0.08,
               },
+              stabilization: { iterations: 150 },
             },
             interaction: { hover: true, tooltipDelay: 200 },
+          })
+          networkRef.current = instance
+          const visInstance = instance as unknown as {
+            once?: (event: string, callback: () => void) => void
+            setOptions?: (options: unknown) => void
+          }
+          visInstance.once?.('stabilizationIterationsDone', () => {
+            visInstance.setOptions?.({ physics: { enabled: false } })
           })
         }
       }
@@ -291,7 +305,7 @@ export default function KnowledgeGraph() {
               </div>
             </div>
           )}
-          {crosswalk && crosswalk.mappings.length === 0 && (
+          {crosswalk?.mappings.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No mappings generated. Ensure both frameworks have requirements defined.
             </p>

@@ -29,7 +29,7 @@ const faqs = [
   },
 ]
 
-export default function FAQ() {
+export default function Faq() {
   return (
     <div className="space-y-6">
       <div>
@@ -38,8 +38,8 @@ export default function FAQ() {
       </div>
 
       <div className="space-y-4">
-        {faqs.map((faq, index) => (
-          <Card key={index}>
+        {faqs.map((faq) => (
+          <Card key={faq.question}>
             <CardHeader>
               <CardTitle className="flex items-start gap-3 text-lg">
                 <HelpCircle className="h-5 w-5 mt-0.5 text-primary shrink-0" />

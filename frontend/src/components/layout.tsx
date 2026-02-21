@@ -5,7 +5,6 @@ import { useChatModel } from '@/contexts/chat-model'
 import { useTheme } from '@/contexts/theme'
 import {
   Home,
-  LayoutDashboard,
   Database,
   ClipboardCheck,
   Network,
@@ -22,7 +21,6 @@ import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'AI Knowledge Base', href: '/knowledge-base', icon: Database },
   { name: 'Compliance & Gap Analysis', href: '/assessments', icon: ClipboardCheck },
   { name: 'Standards Library', href: '/standards-library', icon: BookOpen },
@@ -59,7 +57,7 @@ export default function Layout() {
                 alt="Marlowe"
                 className="h-9 w-9 rounded object-cover"
               />
-              Marlowe®
+              <span>Marlowe®</span>
             </Link>
           </div>
 
