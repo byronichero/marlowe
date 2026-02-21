@@ -9,6 +9,7 @@ import Reports from './pages/reports'
 import StandardsLibrary from './pages/standards-library'
 import FAQ from './pages/faq'
 import Help from './pages/help'
+import AboutMarlowe from './pages/about-marlowe'
 import Login from './pages/login'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="reports" element={<Reports />} />
         <Route path="faq" element={<FAQ />} />
         <Route path="help" element={<Help />} />
+        <Route path="about-marlowe" element={<AboutMarlowe />} />
       </Route>
       <Route path="/login" element={<Login />} />
     </Routes>

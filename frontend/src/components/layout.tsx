@@ -113,6 +113,10 @@ export default function Layout() {
             </Link>
             <p className="px-3 pt-2 text-[10px] text-muted-foreground/80">
               Marlowe® is a registered trademark of GallowGlass AI.{' '}
+              <Link to="/about-marlowe" className="underline hover:text-muted-foreground">
+                Who was Marlowe?
+              </Link>{' '}
+              ·{' '}
               <Link to="/help" className="underline hover:text-muted-foreground">
                 See Help
               </Link>{' '}

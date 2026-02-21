@@ -1,5 +1,6 @@
+import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Book, MessageSquare, FileText, Network, Database } from 'lucide-react'
+import { Book, MessageSquare, FileText, Network, Database, Theater } from 'lucide-react'
 
 const helpSections = [
   {
@@ -81,6 +82,25 @@ export default function Help() {
           </Card>
         ))}
       </div>
+
+      <Link to="/about-marlowe" className="block">
+        <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Theater className="h-5 w-5 text-primary" />
+              Christopher Marlowe
+            </CardTitle>
+            <CardDescription>
+              Who was Marlowe? The Elizabethan playwright behind the name—and why his work inspired ours.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Learn about Doctor Faustus, The Jew of Malta, and the connection between 16th-century drama and AI governance.
+            </p>
+          </CardContent>
+        </Card>
+      </Link>
 
       <Card id="trademark">
         <CardHeader>

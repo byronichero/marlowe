@@ -38,11 +38,11 @@ const REGION_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ]
 
-// ISO and NIST first—drives extraction patterns and crosswalk (ISO 42001 ↔ NIST 800-53)
+// ISO and NIST first—drives extraction patterns and crosswalk (baseline: ISO 42001 + NIST 800-53)
 const FRAMEWORK_TYPE_OPTIONS = [
   { value: '', label: 'Select type (required)…' },
   { value: 'ISO', label: 'ISO (e.g. ISO/IEC 42001:2023)' },
-  { value: 'NIST', label: 'NIST (e.g. NIST 800-53)' },
+  { value: 'NIST', label: 'NIST (baseline required)' },
   { value: 'Other', label: 'Other' },
 ]
 
@@ -54,7 +54,7 @@ const FRAMEWORK_TEMPLATES = {
     type: 'ISO' as const,
   },
   NIST: {
-    name: 'NIST 800-53 Rev 5',
+    name: 'NIST Baseline (800-53 Rev 5)',
     slug: 'nist-800-53-rev5',
     description: 'Security and privacy controls for information systems',
     type: 'NIST' as const,
@@ -99,23 +99,32 @@ export default function Assessments() {
   const [uploadStandardOpen, setUploadStandardOpen] = useState(false)
   const [uploadFrameworkId, setUploadFrameworkId] = useState<number | ''>('')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadStartedAt, setUploadStartedAt] = useState<number | null>(null)
   const [uploadProgress, setUploadProgress] = useState<{
     job_id: string
     filename: string
     status: string
     chunks?: number
+    percent?: number
     error?: string
   } | null>(null)
+  const [showUploadBanner, setShowUploadBanner] = useState(false)
   const [frameworkEvidence, setFrameworkEvidence] = useState<
     Record<number, { chunk_count: number; documents: string[]; has_evidence: boolean }>
   >({})
   const [extractingFrameworkId, setExtractingFrameworkId] = useState<number | null>(null)
   const [extractResult, setExtractResult] = useState<{ frameworkId: number; message: string } | null>(null)
+  const [extractScope, setExtractScope] = useState<Record<number, string>>({})
 
   const hasFramework = frameworks.length > 0
   const hasRequirement = requirements.length >= 1
   const hasEvidence = Object.values(frameworkEvidence).some((e) => e.has_evidence)
   const needsFirstStep = !hasFramework || !hasEvidence || !hasRequirement
+
+  const hasIso = frameworks.some((f) => f.slug?.includes('42001') || f.name?.includes('42001'))
+  const hasNist = frameworks.some(
+    (f) => f.slug?.includes('nist-800-53') || f.name?.toLowerCase().includes('nist 800-53')
+  )
 
   function refreshFrameworks() {
     api.getFrameworks().then(setFrameworks).catch(() => setFrameworks([]))
@@ -127,6 +136,21 @@ export default function Assessments() {
 
   function getRequirementCountForFramework(frameworkId: number): number {
     return requirements.filter((r) => r.framework_id === frameworkId).length
+  }
+
+  function formatElapsed(ms: number): string {
+    const seconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const remaining = seconds % 60
+    return minutes > 0 ? `${minutes}m ${remaining}s` : `${remaining}s`
+  }
+
+  function getUploadPhase(status?: string): { label: string; percent: number } {
+    if (status === 'uploading') return { label: 'Uploading file', percent: 10 }
+    if (status === 'running') return { label: 'Indexing chunks', percent: 75 }
+    if (status === 'completed') return { label: 'Completed', percent: 100 }
+    if (status === 'failed') return { label: 'Failed', percent: 100 }
+    return { label: 'Queued & extracting', percent: 35 }
   }
 
   function getEvidenceForFramework(frameworkId: number) {
@@ -162,13 +186,33 @@ export default function Assessments() {
     const fwId = typeof uploadFrameworkId === 'number' ? uploadFrameworkId : null
     if (!fwId || !uploadFile) return
     try {
-      const result = await api.uploadFrameworkDocument(fwId, uploadFile)
+      setUploadStartedAt(Date.now())
+      setShowUploadBanner(true)
+      setUploadProgress({
+        job_id: '',
+        filename: uploadFile.name,
+        status: 'uploading',
+        percent: 0,
+      })
+      setUploadStandardOpen(false)
+      const result = await api.uploadFrameworkDocument(fwId, uploadFile, (percent) => {
+        setUploadProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'uploading',
+                percent,
+              }
+            : prev
+        )
+      })
       setUploadProgress({
         job_id: result.job_id,
         filename: result.filename,
         status: 'pending',
       })
     } catch (err) {
+      setShowUploadBanner(true)
       setUploadProgress({
         job_id: '',
         filename: uploadFile.name,
@@ -186,9 +230,9 @@ export default function Assessments() {
           setUploadProgress(job)
           if (job.status === 'completed') {
             refreshFrameworkEvidence()
-            setUploadStandardOpen(false)
             setUploadFrameworkId('')
             setUploadFile(null)
+            setUploadStartedAt(null)
           }
         } catch {
           // Keep polling
@@ -336,11 +380,18 @@ export default function Assessments() {
       .finally(() => setIsLoadingAssessments(false))
   }, [])
 
+  function getExtractScopeForFramework(fw: Framework): string {
+    if ((fw.framework_type || '').toUpperCase() !== 'ISO') return 'full'
+    return extractScope[fw.id] ?? 'annex_a_only'
+  }
+
   async function handleExtractRequirements(frameworkId: number) {
     setExtractingFrameworkId(frameworkId)
     setExtractResult(null)
+    const fw = frameworks.find((f) => f.id === frameworkId)
+    const scope = fw ? getExtractScopeForFramework(fw) : undefined
     try {
-      const result = await api.extractRequirements(frameworkId, model)
+      const result = await api.extractRequirements(frameworkId, model, scope)
       refreshRequirements()
       if (result.ok) {
         if (result.created > 0) {
@@ -422,6 +473,60 @@ export default function Assessments() {
         </p>
       </div>
 
+      {showUploadBanner && uploadProgress && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardHeader className="py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">Uploading standard</CardTitle>
+                <CardDescription>
+                  {uploadProgress.filename} — {getUploadPhase(uploadProgress.status).label}
+                </CardDescription>
+              </div>
+              {(uploadProgress.status === 'completed' || uploadProgress.status === 'failed') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowUploadBanner(false)}
+                >
+                  Dismiss
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{uploadProgress.filename}</span>
+              {uploadStartedAt && (
+                <span>Elapsed {formatElapsed(Date.now() - uploadStartedAt)}</span>
+              )}
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted">
+              <div
+                className={`h-2 rounded-full ${
+                  uploadProgress.status === 'failed' ? 'bg-destructive' : 'bg-primary'
+                }`}
+                style={{
+                  width: `${
+                    uploadProgress.status === 'uploading'
+                      ? uploadProgress.percent ?? 10
+                      : getUploadPhase(uploadProgress.status).percent
+                  }%`,
+                }}
+              />
+            </div>
+            {uploadProgress.chunks && uploadProgress.status !== 'failed' && (
+              <div className="text-xs text-muted-foreground">
+                {uploadProgress.chunks} chunks indexed
+              </div>
+            )}
+            {uploadProgress.status === 'failed' && uploadProgress.error && (
+              <div className="text-xs text-destructive">{uploadProgress.error}</div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* First step required – add framework and at least one requirement */}
       {!isLoadingFrameworks && !isLoadingRequirements && needsFirstStep && (
         <Card className="border-primary/50 bg-primary/5">
@@ -436,28 +541,36 @@ export default function Assessments() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row flex-wrap gap-4">
-            {!hasFramework && (
-              <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
-                <h4 className="font-medium mb-1">1. Add a framework (ISO or NIST)</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Start with ISO 42001 or NIST 800-53 for extraction and crosswalk. Choose the type
-                  that matches your standard document.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => openAddFramework('ISO')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add ISO 42001
-                  </Button>
-                  <Button onClick={() => openAddFramework('NIST')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add NIST 800-53
-                  </Button>
-                  <Button variant="outline" onClick={() => openAddFramework()}>
-                    Add other framework
-                  </Button>
-                </div>
+            <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
+              <h4 className="font-medium mb-1">
+                {!hasFramework ? '1. ' : ''}Add framework (ISO or NIST)
+              </h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                ISO 42001 and NIST are recommended baselines. Use NIST 800-53 as the required
+                baseline alongside ISO.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => openAddFramework('ISO')}
+                  variant={hasIso ? 'outline' : 'default'}
+                  size="sm"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {hasIso ? 'ISO 42001 (added)' : 'Add ISO 42001'}
+                </Button>
+                <Button
+                  onClick={() => openAddFramework('NIST')}
+                  variant={hasNist ? 'outline' : 'default'}
+                  size="sm"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {hasNist ? 'NIST (added)' : 'Add NIST'}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openAddFramework()}>
+                  Add other
+                </Button>
               </div>
-            )}
+            </div>
             {hasFramework && !hasEvidence && (
               <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
                 <h4 className="font-medium mb-1">2. Upload standard document</h4>
@@ -502,19 +615,44 @@ export default function Assessments() {
                 Evidence Reviewer, Gap Assessor)
               </CardDescription>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => openUploadStandard()} variant="outline" size="sm">
-                <FileUp className="mr-2 h-4 w-4" />
-                Upload Standard
-              </Button>
-              <Button onClick={openAddRequirement} variant="outline" size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Requirement
-              </Button>
-              <Button onClick={() => openAddFramework()} size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Framework
-              </Button>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex gap-2 flex-wrap justify-end">
+                <Button onClick={() => openUploadStandard()} variant="outline" size="sm">
+                  <FileUp className="mr-2 h-4 w-4" />
+                  Upload Standard
+                </Button>
+                <Button onClick={openAddRequirement} variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Requirement
+                </Button>
+                <Button onClick={() => openAddFramework()} size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Framework
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Templates:</span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto px-0"
+                  onClick={() => openAddFramework('ISO')}
+                >
+                  ISO 42001
+                </Button>
+                <span>•</span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto px-0"
+                  onClick={() => openAddFramework('NIST')}
+                  title="NIST baseline required: 800-53"
+                >
+                  NIST baseline
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -585,20 +723,47 @@ export default function Assessments() {
                         Upload
                       </Button>
                       {hasFwEvidence && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleExtractRequirements(fw.id)}
-                          disabled={extractingFrameworkId !== null}
-                          title="Extract requirements from uploaded standard document using AI"
-                        >
-                          {extractingFrameworkId === fw.id ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="mr-2 h-4 w-4" />
+                        <>
+                          {(fw.framework_type || '').toUpperCase() === 'ISO' && (
+                            <div className="rounded-md border border-muted/60 bg-muted/20 p-2">
+                              <label
+                                htmlFor={`extract-scope-${fw.id}`}
+                                className="text-xs font-medium text-muted-foreground"
+                                title="Annex A only: 38 controls (recommended for ISO 42001). Full: clauses 4–10 + Annex A."
+                              >
+                                Extract scope
+                              </label>
+                              <Select
+                                id={`extract-scope-${fw.id}`}
+                                value={getExtractScopeForFramework(fw)}
+                                onChange={(e) =>
+                                  setExtractScope((prev) => ({ ...prev, [fw.id]: e.target.value }))
+                                }
+                                className="mt-2 h-9 w-full text-sm"
+                                aria-label="Extract scope for ISO framework"
+                              >
+                                <option value="annex_a_only">
+                                  Annex A only (38 controls) — recommended
+                                </option>
+                                <option value="full">Full standard (clauses 4–10 + Annex A)</option>
+                              </Select>
+                            </div>
                           )}
-                          Extract Requirements
-                        </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleExtractRequirements(fw.id)}
+                            disabled={extractingFrameworkId !== null}
+                            title="Extract requirements from uploaded standard document"
+                          >
+                            {extractingFrameworkId === fw.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="mr-2 h-4 w-4" />
+                            )}
+                            Extract Requirements
+                          </Button>
+                        </>
                       )}
                       <Button
                         size="sm"
@@ -678,10 +843,20 @@ export default function Assessments() {
           <DialogHeader>
             <DialogTitle>Add Framework</DialogTitle>
             <DialogDescription>
-              Choose ISO or NIST first—this drives extraction patterns and crosswalk. ISO 42001 and
-              NIST 800-53 are the primary supported frameworks.
+              Choose ISO or NIST first—this drives extraction patterns and crosswalk. Baselines are
+              ISO 42001 and NIST (800-53 required alongside ISO).
             </DialogDescription>
           </DialogHeader>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => openAddFramework('ISO')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Use ISO 42001 template
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => openAddFramework('NIST')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Use NIST template
+            </Button>
+          </div>
           <form onSubmit={handleSubmitAddFramework} className="space-y-4 mt-2">
             {addFrameworkError && (
               <div className="rounded-md bg-destructive/10 text-destructive text-sm px-3 py-2">
@@ -880,9 +1055,12 @@ export default function Assessments() {
         onOpenChange={(open) => {
           setUploadStandardOpen(open)
           if (!open) {
-            setUploadProgress(null)
-            setUploadFrameworkId('')
-            setUploadFile(null)
+            if (!uploadProgress || ['completed', 'failed'].includes(uploadProgress.status)) {
+              setUploadProgress(null)
+              setUploadFrameworkId('')
+              setUploadFile(null)
+              setUploadStartedAt(null)
+            }
           }
         }}
       >
@@ -951,10 +1129,46 @@ export default function Assessments() {
                 Processing {uploadProgress.filename}…
               </div>
             )}
+            {uploadProgress?.status === 'uploading' && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Uploading {uploadProgress.filename}…
+              </div>
+            )}
             {uploadProgress?.status === 'running' && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Indexing {uploadProgress.filename}…
+              </div>
+            )}
+            {uploadProgress &&
+              ['uploading', 'pending', 'running', 'completed', 'failed'].includes(uploadProgress.status) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{getUploadPhase(uploadProgress.status).label}</span>
+                  {uploadStartedAt && (
+                    <span>Elapsed {formatElapsed(Date.now() - uploadStartedAt)}</span>
+                  )}
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div
+                    className={`h-2 rounded-full ${
+                      uploadProgress.status === 'failed' ? 'bg-destructive' : 'bg-primary'
+                    }`}
+                    style={{
+                      width: `${
+                        uploadProgress.status === 'uploading'
+                          ? uploadProgress.percent ?? 10
+                          : getUploadPhase(uploadProgress.status).percent
+                      }%`,
+                    }}
+                  />
+                </div>
+                {uploadProgress.chunks && uploadProgress.status !== 'failed' && (
+                  <div className="text-xs text-muted-foreground">
+                    {uploadProgress.chunks} chunks indexed
+                  </div>
+                )}
               </div>
             )}
             <DialogFooter>

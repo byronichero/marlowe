@@ -124,12 +124,18 @@ async def extract_requirements(
     framework_id: int,
     db: AsyncSession = Depends(get_db),
     model: str | None = Query(None, description="Ollama model to use (defaults to OLLAMA_MODEL)"),
+    scope: str | None = Query(
+        None,
+        description="ISO only: 'annex_a_only' (38 controls) or 'full' (clauses + Annex A). NIST: ignored.",
+    ),
 ) -> ExtractRequirementsResponse:
     """
-    Extract requirements from framework documents via LLM.
-    Uses document chunks in Qdrant. Skips duplicates by identifier.
+    Extract requirements from framework documents.
+    ISO: choose annex_a_only (38 controls) or full. NIST: extracts all controls.
     """
-    result = await extract_and_save_requirements(db, framework_id, model=model)
+    result = await extract_and_save_requirements(
+        db, framework_id, model=model, extraction_scope=scope
+    )
     return ExtractRequirementsResponse(**result)
 
 

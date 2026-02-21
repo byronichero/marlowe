@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     ollama_fallback_model: str = "granite3.2:latest"  # used if requested model returns 404 (not pulled)
     ollama_api_timeout: int = 600  # seconds; long prompts/RAG can be slow
 
+    # Langfuse (agent observability)
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str = "https://cloud.langfuse.com"
+    langfuse_enabled: bool = True
+
     # MinIO / S3-compatible
     minio_endpoint: str = "host.docker.internal:9000"
     minio_access_key: str = "minioadmin"

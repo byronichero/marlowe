@@ -22,6 +22,7 @@ INGEST_EXTENSIONS = DOCLING_EXTENSIONS | TEXT_EXTENSIONS
 
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 150
+UPSERT_BATCH_SIZE = 200
 
 
 def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
@@ -55,6 +56,11 @@ def _stable_point_id(source_path: str, chunk_index: int) -> uuid.UUID:
     """Stable UUID for upsert (re-ingestion replaces points). Qdrant accepts UUID or int only."""
     key = f"{source_path}:{chunk_index}"
     return uuid.uuid5(uuid.NAMESPACE_DNS, key)
+
+
+def _batched(iterable: list[PointStruct], batch_size: int) -> list[list[PointStruct]]:
+    """Split a list into batches for Qdrant upsert."""
+    return [iterable[i : i + batch_size] for i in range(0, len(iterable), batch_size)]
 
 
 def _resolve_docs_path() -> Path:
@@ -147,7 +153,8 @@ async def ingest_single_file(
             else _stable_point_id(source_path, i)
         )
         points.append(PointStruct(id=point_id, vector=vec, payload=payload))
-    upsert_points(collection, points, client=client)
+    for batch in _batched(points, UPSERT_BATCH_SIZE):
+        upsert_points(collection, batch, client=client)
     logger.info("Ingested single file %s: %d chunks", filename, len(points))
     return {"ok": True, "filename": filename, "chunks": len(points)}
 
@@ -203,7 +210,8 @@ async def ingest_docs(path_override: str | None = None) -> dict[str, Any]:
             )
             for i, vec in enumerate(vectors)
         ]
-        upsert_points(collection, points, client=client)
+        for batch in _batched(points, UPSERT_BATCH_SIZE):
+            upsert_points(collection, batch, client=client)
         files_processed += 1
         chunks_ingested += len(points)
         logger.info("Ingested %s: %d chunks", rel_path, len(points))

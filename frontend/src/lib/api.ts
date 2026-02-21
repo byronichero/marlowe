@@ -45,8 +45,11 @@ export const api = {
     fetchAPI<{ framework_id: number; chunk_count: number; documents: string[]; has_evidence: boolean }>(
       `frameworks/${frameworkId}/evidence`
     ),
-  extractRequirements: (frameworkId: number, model?: string) => {
-    const params = model ? `?model=${encodeURIComponent(model)}` : ''
+  extractRequirements: (frameworkId: number, model?: string, scope?: string) => {
+    const searchParams = new URLSearchParams()
+    if (model) searchParams.set('model', model)
+    if (scope) searchParams.set('scope', scope)
+    const params = searchParams.toString() ? `?${searchParams}` : ''
     return fetchAPI<{ ok: boolean; extracted: number; created: number; skipped: number; error?: string }>(
       `frameworks/${frameworkId}/extract-requirements${params}`,
       { method: 'POST' }
@@ -54,17 +57,38 @@ export const api = {
   },
 
   // Documents (for framework-linked uploads)
-  uploadFrameworkDocument: async (frameworkId: number, file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('framework_id', String(frameworkId))
-    const res = await fetch(`${API_BASE}/documents/upload`, {
-      method: 'POST',
-      body: formData,
-    })
-    if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`)
-    return res.json() as Promise<{ job_id: string; filename: string }>
-  },
+  uploadFrameworkDocument: (
+    frameworkId: number,
+    file: File,
+    onProgress?: (percent: number) => void
+  ) =>
+    new Promise<{ job_id: string; filename: string }>((resolve, reject) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('framework_id', String(frameworkId))
+
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE}/documents/upload`, true)
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percent = Math.round((event.loaded / event.total) * 100)
+          onProgress(percent)
+        }
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText))
+          } catch (err) {
+            reject(err)
+          }
+        } else {
+          reject(new Error(`Upload failed: ${xhr.statusText}`))
+        }
+      }
+      xhr.onerror = () => reject(new Error('Upload failed'))
+      xhr.send(formData)
+    }),
   getUploadJobStatus: (jobId: string) =>
     fetchAPI<{
       job_id: string

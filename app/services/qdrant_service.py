@@ -217,3 +217,54 @@ def count_documents_for_framework(
         logger.warning("Failed to count documents for framework %s: %s", framework_id, e)
         return 0, []
     return count, sorted(sources)
+
+
+def get_chunks_for_framework(
+    collection: str,
+    framework_id: int,
+    client: QdrantClient | None = None,
+    max_chars: int | None = None,
+) -> str:
+    """
+    Retrieve all chunk text for a framework, concatenated in order.
+    Chunks are sorted by (source, chunk_index) to preserve document flow.
+    If max_chars is set, truncate the result to that length.
+    """
+    c = client or get_qdrant_client()
+    query_filter = Filter(
+        must=[FieldCondition(key="framework_id", match=MatchValue(value=framework_id))]
+    )
+    records: list[dict] = []
+    offset = None
+    try:
+        while True:
+            batch, next_offset = c.scroll(
+                collection_name=collection,
+                limit=500,
+                offset=offset,
+                scroll_filter=query_filter,
+                with_payload=["source", "chunk_index", "text"],
+                with_vectors=False,
+            )
+            for rec in batch:
+                payload = rec.payload or {}
+                records.append(
+                    {
+                        "source": payload.get("source") or "",
+                        "chunk_index": payload.get("chunk_index", 0),
+                        "text": payload.get("text") or "",
+                    }
+                )
+            if not next_offset or not batch:
+                break
+            offset = next_offset
+    except Exception as e:
+        logger.warning("Failed to get chunks for framework %s: %s", framework_id, e)
+        return ""
+
+    records.sort(key=lambda r: (r["source"], r["chunk_index"]))
+    parts = [r["text"] for r in records if r["text"].strip()]
+    result = "\n\n".join(parts)
+    if max_chars and len(result) > max_chars:
+        result = result[:max_chars] + "\n\n[Document truncated for extraction...]"
+    return result
