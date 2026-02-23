@@ -141,11 +141,25 @@ export const api = {
       { method: 'POST' }
     ),
 
-  // Knowledge graph
-  getGraph: (frameworkId?: number) =>
-    fetchAPI<GraphData>(frameworkId ? `graph?framework_id=${frameworkId}` : 'graph'),
-  getGraphStats: (frameworkId?: number) =>
-    fetchAPI<GraphStats>(frameworkId ? `graph/stats?framework_id=${frameworkId}` : 'graph/stats'),
+  // Knowledge graph (optional signal for abort/cancel)
+  getGraph: (frameworkId?: number, fedrampBaseline?: string, signal?: AbortSignal) => {
+    const params = new URLSearchParams()
+    if (frameworkId) params.set('framework_id', String(frameworkId))
+    if (fedrampBaseline) params.set('fedramp_baseline', fedrampBaseline)
+    return fetchAPI<GraphData>(
+      params.toString() ? `graph?${params}` : 'graph',
+      signal ? { signal } : undefined
+    )
+  },
+  getGraphStats: (frameworkId?: number, fedrampBaseline?: string, signal?: AbortSignal) => {
+    const params = new URLSearchParams()
+    if (frameworkId) params.set('framework_id', String(frameworkId))
+    if (fedrampBaseline) params.set('fedramp_baseline', fedrampBaseline)
+    return fetchAPI<GraphStats>(
+      params.toString() ? `graph/stats?${params}` : 'graph/stats',
+      signal ? { signal } : undefined
+    )
+  },
   getGraphHealth: () => fetchAPI<GraphHealth>('graph/health'),
   syncGraph: () =>
     fetchAPI<{ ok: boolean; frameworks: number; requirements: number }>('graph/sync', {

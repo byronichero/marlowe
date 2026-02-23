@@ -214,7 +214,7 @@ export default function StandardsLibrary() {
                                 Assess
                               </Button>
                             </Link>
-                            <Link to="/knowledge-graph">
+                            <Link to={`/knowledge-graph?framework_id=${item.id}`}>
                               <Button variant="ghost" size="sm" className="h-8">
                                 <Network className="mr-1 h-3.5 w-3.5" />
                                 Graph

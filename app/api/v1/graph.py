@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.database import get_db
-from app.schemas import GraphResponse
+from app.schemas import GraphHealth, GraphResponse, GraphStats
 from app.services.crosswalk_service import generate_crosswalk
-from app.services.graph_service import ensure_indexes, get_graph
+from app.services.graph_service import ensure_indexes, get_graph, get_graph_health, get_graph_stats
 from app.services.graph_sync import sync_all_frameworks_and_requirements
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,9 +13,35 @@ router = APIRouter()
 
 
 @router.get("", response_model=GraphResponse)
-async def get_knowledge_graph() -> GraphResponse:
+async def get_knowledge_graph(
+    framework_id: int | None = Query(None, description="Filter graph to a single framework"),
+    fedramp_baseline: str | None = Query(
+        None, description="FedRAMP baseline: low, moderate, high (NIST 800-53 only)"
+    ),
+) -> GraphResponse:
     """Return graph nodes and edges for knowledge-graph visualization."""
-    return await get_graph()
+    return await get_graph(
+        framework_id=framework_id, fedramp_baseline=fedramp_baseline
+    )
+
+
+@router.get("/stats", response_model=GraphStats)
+async def get_knowledge_graph_stats(
+    framework_id: int | None = Query(None, description="Filter stats to a single framework"),
+    fedramp_baseline: str | None = Query(
+        None, description="FedRAMP baseline: low, moderate, high (NIST 800-53 only)"
+    ),
+) -> GraphStats:
+    """Return aggregate graph statistics for UI telemetry cards."""
+    return await get_graph_stats(
+        framework_id=framework_id, fedramp_baseline=fedramp_baseline
+    )
+
+
+@router.get("/health", response_model=GraphHealth)
+async def get_knowledge_graph_health() -> GraphHealth:
+    """Return Neo4j health status and version."""
+    return await get_graph_health()
 
 
 @router.post("/sync")

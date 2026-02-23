@@ -49,177 +49,167 @@ export default function Home() {
     })
   }, [])
 
+  const quickActionLink =
+    'flex items-center gap-2.5 rounded-lg border p-2.5 text-sm transition-colors hover:bg-accent hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <img
-          src="/marlowe.jpeg"
-          alt="Marlowe"
-          className="h-12 w-12 rounded-lg object-cover"
-        />
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight">Marlowe Assistant</h1>
-          <p className="text-muted-foreground">
-            Ask about governance, frameworks, and your knowledge base. Uses the Marlowe system prompt and RAG.
-          </p>
+    <div className="flex h-[calc(100vh-8rem)] flex-col gap-4 lg:flex-row lg:gap-6">
+      {/* Main: Chat — prominent, stands out */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="mb-2 flex items-center gap-2">
+          <img
+            src="/marlowe.jpeg"
+            alt="Marlowe"
+            className="h-9 w-9 rounded-lg object-cover"
+          />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Marlowe Assistant</h1>
+            <p className="text-xs text-muted-foreground">
+              Ask about governance, frameworks, and your knowledge base
+            </p>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-2 border-primary/20 bg-card shadow-lg ring-1 ring-primary/5">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-1">
+            <CopilotChat
+              className="flex min-h-0 flex-1 flex-col"
+              labels={{
+                title: 'Marlowe Assistant',
+                initial:
+                  'Ask about governance, frameworks, or your knowledge base. Questions use RAG over your uploaded documents.',
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Right sidebar: stats, model, quick actions, about */}
+      <aside className="flex w-full flex-shrink-0 flex-col gap-4 lg:w-72">
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+              <CardTitle className="text-xs font-medium">API</CardTitle>
+              <Activity className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              {isLoadingOverview ? (
+                <Skeleton className="h-6 w-10" />
+              ) : (
+                <span className="text-lg font-bold">{health}</span>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+              <CardTitle className="text-xs font-medium">Frameworks</CardTitle>
+              <BookOpen className="h-3.5 w-3.5 text-primary" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              {isLoadingOverview ? (
+                <Skeleton className="h-6 w-8" />
+              ) : (
+                <span className="text-lg font-bold">{frameworksCount}</span>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+              <CardTitle className="text-xs font-medium">Requirements</CardTitle>
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              {isLoadingOverview ? (
+                <Skeleton className="h-6 w-8" />
+              ) : (
+                <span className="text-lg font-bold">{requirementsCount}</span>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+              <CardTitle className="text-xs font-medium">Assessments</CardTitle>
+              <ClipboardList className="h-3.5 w-3.5 text-accent-foreground" />
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              {isLoadingOverview ? (
+                <Skeleton className="h-6 w-8" />
+              ) : (
+                <span className="text-lg font-bold">{assessmentsCount}</span>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Model selector */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">API Status</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
-              <Activity className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="text-2xl font-bold">{health}</div>
-            )}
+          <CardContent className="p-3">
+            <label htmlFor="chat-model" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              Model
+            </label>
+            <select
+              id="chat-model"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
+            >
+              {['qwen3:latest', ...models.filter((m) => m !== 'qwen3:latest')].map((m) => (
+                <option key={m} value={m}>
+                  {m === 'qwen3:latest' ? `${m} (default)` : m}
+                </option>
+              ))}
+            </select>
           </CardContent>
         </Card>
 
+        {/* Quick Actions */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Frameworks</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <BookOpen className="h-4 w-4" />
-            </div>
+          <CardHeader className="p-3 pb-2">
+            <CardTitle className="text-sm">Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-8 w-12" />
-            ) : (
-              <div className="text-2xl font-bold">{frameworksCount}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Requirements</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-8 w-12" />
-            ) : (
-              <div className="text-2xl font-bold">{requirementsCount}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assessments</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground">
-              <ClipboardList className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingOverview ? (
-              <Skeleton className="h-8 w-12" />
-            ) : (
-              <div className="text-2xl font-bold">{assessmentsCount}</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            <Link
-              to="/knowledge-base"
-              className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <Database className="h-5 w-5 text-primary" />
-              <span className="font-medium">AI Knowledge Base</span>
+          <CardContent className="space-y-1.5 p-3 pt-0">
+            <Link to="/knowledge-base" className={quickActionLink}>
+              <Database className="h-4 w-4 shrink-0 text-primary" />
+              <span>AI Knowledge Base</span>
             </Link>
-            <Link
-              to="/assessments"
-              className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <ClipboardCheck className="h-5 w-5 text-primary" />
-              <span className="font-medium">Assessments</span>
+            <Link to="/assessments" className={quickActionLink}>
+              <ClipboardCheck className="h-4 w-4 shrink-0 text-primary" />
+              <span>Assessments</span>
             </Link>
-            <Link
-              to="/knowledge-base"
-              className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <Upload className="h-5 w-5 text-primary" />
-              <span className="font-medium">Upload Documents</span>
+            <Link to="/knowledge-base" className={quickActionLink}>
+              <Upload className="h-4 w-4 shrink-0 text-primary" />
+              <span>Upload Documents</span>
             </Link>
-            <Link
-              to="/"
-              className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <MessageSquare className="h-5 w-5 text-primary" />
-              <span className="font-medium">Marlowe Assistant</span>
+            <Link to="/" className={quickActionLink}>
+              <MessageSquare className="h-4 w-4 shrink-0 text-primary" />
+              <span>Marlowe Assistant</span>
             </Link>
-            <Link
-              to="/knowledge-graph"
-              className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <Network className="h-5 w-5 text-primary" />
-              <span className="font-medium">Knowledge Graph</span>
+            <Link to="/knowledge-graph" className={quickActionLink}>
+              <Network className="h-4 w-4 shrink-0 text-primary" />
+              <span>Knowledge Graph</span>
             </Link>
           </CardContent>
         </Card>
 
+        {/* About */}
         <Card>
-          <CardHeader>
-            <CardTitle>About Marlowe</CardTitle>
+          <CardHeader className="p-3 pb-2">
+            <CardTitle className="text-sm">About Marlowe</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-base text-muted-foreground leading-relaxed">
-              Marlowe supports <strong>AI governance</strong>, responsible AI, privacy, and global
-              regulations. Use frameworks (e.g. EU AI Act, GDPR, NIST AI RMF), run assessments,
-              attach evidence, and explore the knowledge graph. Framework-agnostic.
+          <CardContent className="p-3 pt-0">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Supports AI governance, responsible AI, privacy, and global regulations. EU AI Act,
+              GDPR, NIST AI RMF, assessments, and the knowledge graph.
             </p>
             <Link
               to="/about-marlowe"
-              className="mt-3 inline-flex text-sm font-medium text-primary hover:underline"
+              className="mt-2 inline-flex text-xs font-medium text-primary hover:underline"
             >
-              Learn about Christopher Marlowe
+              Learn more
             </Link>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4">
-        <label htmlFor="chat-model" className="text-sm font-medium text-muted-foreground">
-          Model:
-        </label>
-        <select
-          id="chat-model"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          {['qwen3:latest', ...models.filter((m) => m !== 'qwen3:latest')].map((m) => (
-            <option key={m} value={m}>
-              {m === 'qwen3:latest' ? `${m} (default)` : m}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex-1 min-h-0">
-        <CopilotChat
-          labels={{
-            title: 'Marlowe Assistant',
-            initial: 'Ask about governance, frameworks, or your knowledge base. Questions use RAG over your uploaded documents.',
-          }}
-        />
-      </div>
+      </aside>
     </div>
   )
 }

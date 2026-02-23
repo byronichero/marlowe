@@ -25,3 +25,24 @@ class GraphResponse(BaseModel):
 
     nodes: list[GraphNode] = Field(default_factory=list)
     edges: list[GraphEdge] = Field(default_factory=list)
+
+
+class GraphStats(BaseModel):
+    """Summary statistics for the knowledge graph."""
+
+    total_nodes: int = Field(..., description="Total nodes in the graph")
+    total_relationships: int = Field(..., description="Total relationships in the graph")
+    framework_nodes: int = Field(..., description="Framework node count")
+    requirement_nodes: int = Field(..., description="Requirement node count")
+    assessment_nodes: int = Field(..., description="Assessment node count")
+    avg_relationships_per_requirement: float = Field(
+        ..., description="Average relationships per requirement node"
+    )
+
+
+class GraphHealth(BaseModel):
+    """Health check response for the knowledge graph."""
+
+    status: str = Field(..., description="Health status")
+    version: str = Field(..., description="Neo4j version")
+    timestamp: str = Field(..., description="ISO timestamp")

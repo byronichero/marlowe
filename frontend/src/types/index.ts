@@ -27,6 +27,7 @@ export interface FrameworkLibraryItem {
 export interface Requirement {
   id: number
   framework_id: number
+  parent_id?: number | null
   identifier: string
   title: string
   description?: string
@@ -79,4 +80,19 @@ export interface GraphEdge {
 export interface GraphData {
   nodes: GraphNode[]
   edges: GraphEdge[]
+}
+
+export interface GraphStats {
+  total_nodes: number
+  total_relationships: number
+  framework_nodes: number
+  requirement_nodes: number
+  assessment_nodes: number
+  avg_relationships_per_requirement: number
+}
+
+export interface GraphHealth {
+  status: string
+  version: string
+  timestamp: string
 }
