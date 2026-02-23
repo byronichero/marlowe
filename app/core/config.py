@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # Optional: path to credentials file (overrides env if present)
     credentials_file: str | None = None
 
+    # NIST auto-seed: load NIST 800-53 catalog on startup if not present (set false to disable)
+    nist_auto_seed: bool = True
+
     # Docs ingestion: path to folder to ingest into Qdrant (relative to project root or absolute)
     docs_path: str = "docs"
     # Embedding model and dimension (nomic-embed-text = 768)

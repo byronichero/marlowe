@@ -1,5 +1,7 @@
 """FastAPI application entry point with lifespan, CORS, health, and API router."""
 
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -12,7 +14,11 @@ from app.agents.rag_agent import graph, graph_free
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import init_db
+from app.services.nist_seed_service import ensure_nist_seeded
+from app.services.qdrant_service import ensure_collection
 from app.services.otel import init_otel
+
+logger = logging.getLogger(__name__)
 
 # Main chat uses Marlowe system prompt + RAG; side popup uses plain model (free_chat_agent).
 MARLOWE_AGENT = LangGraphAGUIAgent(
@@ -31,6 +37,17 @@ FREE_CHAT_AGENT = LangGraphAGUIAgent(
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup: init DB and other resources. Shutdown: cleanup."""
     await init_db()
+    # Ensure Qdrant collection exists (avoids 404 when counting evidence on fresh rebuild)
+    try:
+        ensure_collection()
+        logger.info("Qdrant collection ready")
+    except Exception as e:
+        logger.warning("Could not ensure Qdrant collection (will retry on first upload): %s", e)
+    # Auto-seed NIST 800-53 in background if not present (does not block startup)
+    if settings.nist_auto_seed:
+        task = asyncio.create_task(ensure_nist_seeded())
+        app.state.nist_seed_task = task  # keep reference to prevent gc
+        logger.info("NIST auto-seed enabled: will load catalog if not present")
     yield
     # Optional: close Neo4j, Redis, Qdrant clients if held at app state
 

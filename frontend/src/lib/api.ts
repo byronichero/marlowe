@@ -8,6 +8,8 @@ import type {
   ChatMessage,
   ChatResponse,
   GraphData,
+  GraphHealth,
+  GraphStats,
 } from '@/types'
 
 const API_BASE = '/api/v1'
@@ -132,8 +134,19 @@ export const api = {
   // Ollama models
   getModels: () => fetchAPI<string[]>('ollama/models'),
 
+  // NIST 800-53 seed (official catalog, no upload needed)
+  seedNist80053: (replace?: boolean) =>
+    fetchAPI<{ ok: boolean; framework_id: number; controls_created: number; error?: string }>(
+      `nist/seed?replace_existing=${replace ?? false}`,
+      { method: 'POST' }
+    ),
+
   // Knowledge graph
-  getGraph: () => fetchAPI<GraphData>('graph'),
+  getGraph: (frameworkId?: number) =>
+    fetchAPI<GraphData>(frameworkId ? `graph?framework_id=${frameworkId}` : 'graph'),
+  getGraphStats: (frameworkId?: number) =>
+    fetchAPI<GraphStats>(frameworkId ? `graph/stats?framework_id=${frameworkId}` : 'graph/stats'),
+  getGraphHealth: () => fetchAPI<GraphHealth>('graph/health'),
   syncGraph: () =>
     fetchAPI<{ ok: boolean; frameworks: number; requirements: number }>('graph/sync', {
       method: 'POST',

@@ -7,7 +7,7 @@ from app.schemas.evidence import EvidenceCreate, EvidenceRead
 from app.schemas.organization import OrganizationCreate, OrganizationRead
 from app.schemas.faq import FAQCreate, FAQRead
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.schemas.graph import GraphNode, GraphEdge, GraphResponse
+from app.schemas.graph import GraphNode, GraphEdge, GraphResponse, GraphStats, GraphHealth
 
 __all__ = [
     "FrameworkCreate",
@@ -30,4 +30,6 @@ __all__ = [
     "GraphNode",
     "GraphEdge",
     "GraphResponse",
+    "GraphStats",
+    "GraphHealth",
 ]

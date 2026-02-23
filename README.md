@@ -75,6 +75,16 @@ The `docs/` folder (PDFs, DOCX, .md, etc.) can be ingested into Qdrant so **AI C
    In Docker: `docker compose exec backend python -m app.scripts.ingest_docs`
 4. After ingestion, **Chat** uses retrieved chunks from Qdrant automatically when answering.
 
+## NIST SP 800-53 (free, no document needed)
+
+NIST 800-53 Rev 5 is public domain. The app **auto-seeds** the official catalog on startup if not present—end users get 1,196 controls with no action required.
+
+- **Auto-seed:** On first startup, NIST 800-53 is loaded automatically (set `NIST_AUTO_SEED=false` to disable).
+- **Manual:** Assessments → **Load NIST 800-53** button, or `POST /api/v1/nist/seed` (add `?replace_existing=true` to replace).
+- **CLI:** `python -m app.scripts.seed_nist_80053` (add `--replace` to replace existing)
+
+Catalog is fetched from [NIST OSCAL GitHub](https://github.com/usnistgov/oscal-content). Controls include base controls and enhancements with proper hierarchy (e.g. AC-2(1) under AC-2).
+
 ## Knowledge graph (Neo4j)
 
 Frameworks and requirements are synced from Postgres to Neo4j when you create or update them via the API. For existing data, use **Sync from DB** on the Knowledge Graph page, or `POST /api/v1/graph/sync`. The graph UI (vis-network) shows frameworks and requirements and **BELONGS_TO** edges; pan and zoom to explore.

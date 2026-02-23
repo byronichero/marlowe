@@ -15,11 +15,13 @@ from app.api.v1 import (
     faq,
     ollama,
     gap_analysis,
+    nist,
 )
 
 api_router = APIRouter()
 
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(nist.router, prefix="/nist", tags=["nist"])
 api_router.include_router(frameworks.router, prefix="/frameworks", tags=["frameworks"])
 api_router.include_router(requirements.router, prefix="/requirements", tags=["requirements"])
 api_router.include_router(assessments.router, prefix="/assessments", tags=["assessments"])

@@ -15,7 +15,7 @@ router = APIRouter()
 @router.get("", response_model=list[RequirementRead])
 async def list_requirements(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = Query(2000, ge=1, le=10000, description="Max requirements to return (NIST 800-53 has ~1,200)"),
     framework_id: int | None = Query(None),
     level: str | None = Query(None),
     family: str | None = Query(None),

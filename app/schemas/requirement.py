@@ -12,6 +12,7 @@ class RequirementBase(BaseModel):
     description: str | None = None
     level: str | None = None
     family: str | None = None
+    parent_id: int | None = None
 
 
 class RequirementCreate(RequirementBase):
@@ -28,6 +29,7 @@ class RequirementUpdate(BaseModel):
     description: str | None = None
     level: str | None = None
     family: str | None = None
+    parent_id: int | None = None
 
 
 class RequirementRead(RequirementBase):

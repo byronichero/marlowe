@@ -115,6 +115,8 @@ export default function Assessments() {
   const [extractingFrameworkId, setExtractingFrameworkId] = useState<number | null>(null)
   const [extractResult, setExtractResult] = useState<{ frameworkId: number; message: string } | null>(null)
   const [extractScope, setExtractScope] = useState<Record<number, string>>({})
+  const [loadingNistSeed, setLoadingNistSeed] = useState(false)
+  const [nistSeedReplaceConfirm, setNistSeedReplaceConfirm] = useState(false)
 
   const hasFramework = frameworks.length > 0
   const hasRequirement = requirements.length >= 1
@@ -132,6 +134,38 @@ export default function Assessments() {
 
   function refreshRequirements() {
     api.getRequirements().then(setRequirements).catch(() => setRequirements([]))
+  }
+
+  async function handleLoadNist80053(replace = false) {
+    setLoadingNistSeed(true)
+    setNistSeedReplaceConfirm(false)
+    try {
+      const result = await api.seedNist80053(replace)
+      if (result.ok) {
+        refreshFrameworks()
+        refreshRequirements()
+        setExtractResult({
+          frameworkId: result.framework_id,
+          message: `NIST SP 800-53 loaded: ${result.controls_created} controls (free, no upload needed).`,
+        })
+        setTimeout(() => setExtractResult(null), 8000)
+      } else if (result.error) {
+        setExtractResult({ frameworkId: 0, message: result.error })
+        if (result.error.includes('already exists')) {
+          setNistSeedReplaceConfirm(true)
+        }
+        setTimeout(() => setExtractResult(null), 6000)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load NIST catalog'
+      setExtractResult({ frameworkId: 0, message: msg })
+      if (msg.includes('409') || msg.includes('already exists')) {
+        setNistSeedReplaceConfirm(true)
+      }
+      setTimeout(() => setExtractResult(null), 6000)
+    } finally {
+      setLoadingNistSeed(false)
+    }
   }
 
   function getRequirementCountForFramework(frameworkId: number): number {
@@ -546,8 +580,8 @@ export default function Assessments() {
                 {!hasFramework ? '1. ' : ''}Add framework (ISO or NIST)
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
-                ISO 42001 and NIST are recommended baselines. Use NIST 800-53 as the required
-                baseline alongside ISO.
+                ISO 42001 and NIST are recommended baselines. NIST 800-53 is free—load the official
+                catalog (1,189 controls) with one click. ISO requires your own document.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -559,13 +593,39 @@ export default function Assessments() {
                   {hasIso ? 'ISO 42001 (added)' : 'Add ISO 42001'}
                 </Button>
                 <Button
-                  onClick={() => openAddFramework('NIST')}
+                  onClick={() => {
+                    if (!hasNist) {
+                      handleLoadNist80053(nistSeedReplaceConfirm)
+                    }
+                  }}
                   variant={hasNist ? 'outline' : 'default'}
                   size="sm"
+                  disabled={loadingNistSeed || (hasNist && !nistSeedReplaceConfirm)}
                 >
-                  <Plus className="mr-2 h-4 w-4" />
-                  {hasNist ? 'NIST (added)' : 'Add NIST'}
+                  {loadingNistSeed ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading…
+                    </>
+                  ) : hasNist ? (
+                    'NIST 800-53 (loaded)'
+                  ) : (
+                    <>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Load NIST 800-53
+                    </>
+                  )}
                 </Button>
+                {nistSeedReplaceConfirm && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleLoadNist80053(true)}
+                    disabled={loadingNistSeed}
+                  >
+                    Replace existing
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => openAddFramework()}>
                   Add other
                 </Button>
