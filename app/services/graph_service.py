@@ -105,11 +105,10 @@ async def _build_framework_graph(
         node_result = await session.run(
             """
             MATCH (f:Framework {id: $fw_id})
-            WITH f
             MATCH (r:Requirement)-[:BELONGS_TO]->(f)
             WHERE r.identifier IN $control_ids
-            WITH collect(f) + collect(r) AS nodes
-            UNWIND nodes AS n
+            WITH f, collect(r) AS reqs
+            UNWIND [f] + reqs AS n
             RETURN elementId(n) AS neo4j_id, labels(n)[0] AS label,
                    n.id AS custom_id, n.name AS name, n.identifier AS identifier
             """,
@@ -121,19 +120,23 @@ async def _build_framework_graph(
             """
             MATCH (f:Framework {id: $fw_id})
             OPTIONAL MATCH (r:Requirement)-[:BELONGS_TO]->(f)
-            WITH collect(f) + collect(r) AS nodes
-            UNWIND nodes AS n
+            WITH f, collect(r) AS reqs
+            UNWIND [f] + [x IN reqs WHERE x IS NOT NULL | x] AS n
             RETURN elementId(n) AS neo4j_id, labels(n)[0] AS label,
                    n.id AS custom_id, n.name AS name, n.identifier AS identifier
             """,
             fw_id=f"framework_{framework_id}",
         )
+    seen_nids: set[str] = set()
     async for record in node_result:
         neo4j_id = record["neo4j_id"] or ""
         custom_id = record["custom_id"]
         lbl = record["label"] or "node"
         name = record["name"] or record["identifier"] or custom_id or neo4j_id
         nid = str(custom_id) if custom_id else neo4j_id
+        if nid in seen_nids:
+            continue
+        seen_nids.add(nid)
         id_map[neo4j_id] = nid
         nodes.append(GraphNode(id=nid, label=str(name), type=lbl, properties={"name": name}))
     if control_ids:

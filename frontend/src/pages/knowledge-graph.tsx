@@ -117,6 +117,9 @@ export default function KnowledgeGraph() {
   const [searchParams] = useSearchParams()
   const [graphFrameworkId, setGraphFrameworkId] = useState<number | ''>('')
   const [fedrampBaseline, setFedrampBaseline] = useState<string>('')
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [syncSuccess, setSyncSuccess] = useState<string | null>(null)
+  const [graphError, setGraphError] = useState<string | null>(null)
 
   const nistFramework = frameworks.find(
     (f) =>
@@ -138,14 +141,22 @@ export default function KnowledgeGraph() {
         signal
       )) as unknown as GraphApiResponse
       setHasGraphData((data?.nodes?.length ?? 0) > 0)
+      setGraphError(null)
       if (containerRef.current && data?.nodes?.length) {
-        const visNodes = data.nodes.map((n) => ({
-          id: n.id,
-          label:
-            showLabelsOnHover && (n.type ?? '').toLowerCase() !== 'framework' ? '' : n.label,
-          group: n.type?.toLowerCase() ?? 'node',
-          title: n.label,
-        }))
+        const seen = new Set<string>()
+        const visNodes = data.nodes
+          .filter((n) => {
+            if (seen.has(n.id)) return false
+            seen.add(n.id)
+            return true
+          })
+          .map((n) => ({
+            id: n.id,
+            label:
+              showLabelsOnHover && (n.type ?? '').toLowerCase() !== 'framework' ? '' : n.label,
+            group: n.type?.toLowerCase() ?? 'node',
+            title: n.label,
+          }))
         const visEdges = data.edges.map((e) => ({
           from: e.source,
           to: e.target,
@@ -209,6 +220,7 @@ export default function KnowledgeGraph() {
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
       setHasGraphData(false)
+      setGraphError(err instanceof Error ? err.message : 'Failed to load graph')
     } finally {
       setIsLoadingGraph(false)
     }
@@ -239,13 +251,22 @@ export default function KnowledgeGraph() {
   }
 
   async function handleSync() {
+    setSyncError(null)
+    setSyncSuccess(null)
     setIsSyncing(true)
     try {
-      await api.syncGraph()
+      const result = await api.syncGraph()
       await loadGraph(graphFrameworkId, fedrampBaseline)
       await loadGraphMeta(graphFrameworkId, fedrampBaseline)
-    } catch {
-      // Ignore
+      const f = result.frameworks ?? 0
+      const r = result.requirements ?? 0
+      if (f === 0 && r === 0) {
+        setSyncSuccess('Sync completed but 0 frameworks and 0 requirements in database. Add frameworks in Standards Library first.')
+      } else {
+        setSyncSuccess(`Synced ${f} framework(s), ${r} requirement(s).`)
+      }
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Sync failed')
     } finally {
       setIsSyncing(false)
     }
@@ -287,12 +308,19 @@ export default function KnowledgeGraph() {
           ...(existing.edges.map((e) => ({ from: e.source, to: e.target }))),
           ...crosswalkEdges,
         ]
-        const visNodes = existing.nodes.map((n) => ({
-          id: n.id,
-          label: n.label,
-          group: n.type?.toLowerCase(),
-          title: n.label,
-        }))
+        const crosswalkSeen = new Set<string>()
+        const visNodes = existing.nodes
+          .filter((n) => {
+            if (crosswalkSeen.has(n.id)) return false
+            crosswalkSeen.add(n.id)
+            return true
+          })
+          .map((n) => ({
+            id: n.id,
+            label: n.label,
+            group: n.type?.toLowerCase(),
+            title: n.label,
+          }))
         networkRef.current.setData({ nodes: visNodes, edges: visEdges })
       }
     } catch (err) {
@@ -536,14 +564,22 @@ export default function KnowledgeGraph() {
                 />
                 <span>Expand clusters on click</span>
               </label>
-              <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
-                {isSyncing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
+                  {isSyncing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  Sync from DB
+                </Button>
+                {syncError && (
+                  <span className="text-sm text-destructive">{syncError}</span>
                 )}
-                Sync from DB
-              </Button>
+                {syncSuccess && (
+                  <span className="text-sm text-muted-foreground">{syncSuccess}</span>
+                )}
+              </div>
               <Button variant="outline" size="sm" onClick={handleResetView} disabled={!hasGraphData}>
                 <LocateFixed className="mr-2 h-4 w-4" />
                 Reset view
@@ -563,9 +599,16 @@ export default function KnowledgeGraph() {
           )}
           {!isLoadingGraph && !hasGraphData && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
+              <div className="text-center text-muted-foreground max-w-md">
                 <Network className="mx-auto h-16 w-16 mb-4 opacity-50" />
-                <p>No graph data yet. Sync from DB to load frameworks and requirements.</p>
+                <p>
+                  {graphError ?? 'No graph data yet. Sync from DB to load frameworks and requirements.'}
+                </p>
+                {graphError && (
+                  <p className="mt-2 text-sm">
+                    Ensure Neo4j is running and click Sync from DB to copy data from Postgres.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -688,156 +731,6 @@ export default function KnowledgeGraph() {
             <p className="text-sm text-muted-foreground">
               No mappings generated. Ensure both frameworks have requirements defined.
             </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Graph visualization */}
-      <Card className="h-[calc(100vh-28rem)] min-h-[400px]">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle>Graph Visualization</CardTitle>
-              <CardDescription>
-                Frameworks and requirements from Neo4j. Crosswalk mappings appear as dashed edges.
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <label htmlFor="graph-framework" className="text-muted-foreground">
-                  Framework
-                </label>
-                <Select
-                  id="graph-framework"
-                  value={graphFrameworkId}
-                  onChange={(e) => {
-                    const v = e.target.value ? Number(e.target.value) : ''
-                    setGraphFrameworkId(v)
-                    if (!v || v !== nistFramework?.id) setFedrampBaseline('')
-                  }}
-                >
-                  <option value="">All frameworks</option>
-                  {frameworks.map((fw) => (
-                    <option key={fw.id} value={fw.id}>
-                      {fw.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              {nistFramework && (
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-sm">FedRAMP:</span>
-                    {(['low', 'moderate', 'high'] as const).map((level) => {
-                      const info = FEDRAMP_BASELINE_INFO[level]
-                      const isActive = fedrampBaseline === level
-                      return (
-                        <Button
-                          key={level}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleFedrampBaseline(level)}
-                          className={cn(
-                            'border',
-                            isActive ? info.color.active : info.color.inactive
-                          )}
-                        >
-                          Level {info.level}
-                        </Button>
-                      )
-                    })}
-                    {fedrampBaseline && (
-                      <span className="text-muted-foreground text-xs">
-                        ({FEDRAMP_BASELINE_INFO[fedrampBaseline]?.label} ·{' '}
-                        {FEDRAMP_BASELINE_INFO[fedrampBaseline]?.count} controls)
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <a
-                      href="https://github.com/usnistgov/oscal-content/tree/main/nist.gov/SP800-53/rev5"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 hover:underline"
-                    >
-                      <Info className="h-3 w-3" />
-                      Source: NIST SP 800-53 Rev 5 (OSCAL)
-                    </a>
-                    {fedrampBaseline &&
-                      graphStats &&
-                      (() => {
-                        const expected = FEDRAMP_BASELINE_INFO[fedrampBaseline]?.count ?? 0
-                        const actual = graphStats.requirement_nodes ?? 0
-                        const diff = actual - expected
-                        if (diff < -2) {
-                          return (
-                            <span className="text-amber-600 dark:text-amber-500">
-                              Graph: {actual} (expected {expected}) — sync may be needed
-                            </span>
-                          )
-                        }
-                        if (diff > 2) {
-                          return (
-                            <span className="text-amber-600 dark:text-amber-500">
-                              Graph: {actual} — filter may not be applied
-                            </span>
-                          )
-                        }
-                        return null
-                      })()}
-                  </div>
-                </div>
-              )}
-              <label className="flex items-center gap-2 text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={showLabelsOnHover}
-                  onChange={(e) => setShowLabelsOnHover(e.target.checked)}
-                />
-                <span>Labels on hover</span>
-              </label>
-              <label className="flex items-center gap-2 text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={expandClustersOnClick}
-                  onChange={(e) => setExpandClustersOnClick(e.target.checked)}
-                />
-                <span>Expand clusters on click</span>
-              </label>
-              <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
-                {isSyncing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Sync from DB
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleResetView} disabled={!hasGraphData}>
-                <LocateFixed className="mr-2 h-4 w-4" />
-                Reset view
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="h-[calc(100%-5rem)]">
-          <div
-            ref={containerRef}
-            className="h-full w-full rounded-lg border-2 border-dashed min-h-[300px]"
-          />
-          {isLoadingGraph && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          {!isLoadingGraph && !hasGraphData && (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <Network className="mx-auto h-16 w-16 mb-4 opacity-50" />
-                <p>No graph data yet. Sync from DB to load frameworks and requirements.</p>
-              </div>
-            </div>
           )}
         </CardContent>
       </Card>

@@ -47,9 +47,15 @@ async def get_knowledge_graph_health() -> GraphHealth:
 @router.post("/sync")
 async def sync_graph_from_postgres(db: AsyncSession = Depends(get_db)) -> dict:
     """Sync all frameworks and requirements from Postgres to Neo4j (initial load or refresh)."""
-    await ensure_indexes()
-    counts = await sync_all_frameworks_and_requirements(db)
-    return {"ok": True, "frameworks": counts["frameworks"], "requirements": counts["requirements"]}
+    try:
+        await ensure_indexes()
+        counts = await sync_all_frameworks_and_requirements(db)
+        return {"ok": True, "frameworks": counts["frameworks"], "requirements": counts["requirements"]}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Sync failed: {e!s}. Check Neo4j is running and reachable.",
+        )
 
 
 @router.get("/crosswalk")
