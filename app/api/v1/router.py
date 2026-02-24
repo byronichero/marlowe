@@ -16,6 +16,7 @@ from app.api.v1 import (
     ollama,
     gap_analysis,
     nist,
+    voice,
 )
 
 api_router = APIRouter()
@@ -33,3 +34,4 @@ api_router.include_router(graph.router, prefix="/graph", tags=["graph"])
 api_router.include_router(ollama.router, prefix="/ollama", tags=["ollama"])
 api_router.include_router(faq.router, prefix="/faq", tags=["faq"])
 api_router.include_router(gap_analysis.router, prefix="/gap-analysis", tags=["gap-analysis"])
+api_router.include_router(voice.router, prefix="/voice", tags=["voice"])

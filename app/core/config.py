@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     embedding_model: str = "nomic-embed-text"
     embedding_dimension: int = 768
 
+    # Whisper STT (faster-whisper): model size tiny|base|small|medium|large-v3, device cpu|cuda
+    whisper_model_size: str = "base"
+    whisper_device: str = "cpu"
+
 
 @lru_cache
 def get_settings() -> Settings:
