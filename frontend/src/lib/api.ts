@@ -109,6 +109,15 @@ export const api = {
       error?: string
     }>(`documents/jobs/${jobId}`),
 
+  // Semantic search over knowledge base (Qdrant)
+  searchDocuments: (query: string, limit?: number) => {
+    const params = new URLSearchParams({ q: query })
+    if (limit != null) params.set('limit', String(limit))
+    return fetchAPI<{
+      results: Array<{ text: string; source: string; score: number }>
+    }>(`documents/search?${params.toString()}`)
+  },
+
   // Requirements
   getRequirements: (frameworkId?: number) => {
     const params = frameworkId ? `?framework_id=${frameworkId}` : ''
@@ -184,4 +193,30 @@ export const api = {
       framework_a: { id: number; name: string }
       framework_b: { id: number; name: string }
     }>(`graph/crosswalk?framework_a=${frameworkA}&framework_b=${frameworkB}`),
+
+  // Voice STT: upload audio, get transcribed text
+  transcribe: async (audioBlob: Blob, language?: string): Promise<{ text: string }> => {
+    const form = new FormData()
+    form.append('audio', audioBlob, 'recording.webm')
+    const url = language
+      ? `${API_BASE}/voice/transcribe?language=${encodeURIComponent(language)}`
+      : `${API_BASE}/voice/transcribe`
+    const response = await fetch(url, {
+      method: 'POST',
+      body: form,
+    })
+    if (!response.ok) {
+      let message = response.statusText
+      try {
+        const body = (await response.json()) as { detail?: string }
+        if (body?.detail) {
+          message = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
+        }
+      } catch {
+        /* ignore */
+      }
+      throw new Error(message)
+    }
+    return response.json()
+  },
 }

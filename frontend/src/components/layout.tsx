@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { CopilotKit } from '@copilotkit/react-core'
 import { CopilotPopup } from '@copilotkit/react-ui'
+import { VoiceButton } from '@/components/voice-button'
 import { useChatModel } from '@/contexts/chat-model'
 import { useTheme } from '@/contexts/theme'
 import {
@@ -194,14 +195,20 @@ export default function Layout() {
         </div>
       </main>
 
-      {/* Side chat: plain model (no Marlowe system prompt); wrapped in its own CopilotKit so it uses free_chat_agent */}
-      <CopilotKit runtimeUrl="/api/copilotkit" agent="free_chat_agent" properties={{ model }}>
-        <CopilotPopup
-          labels={{
-            title: 'Quick Chat',
-            initial: 'General chat with the model—no Marlowe context.',
-          }}
-        />
+      {/* Side chat: Marlowe agent (RAG + knowledge graph) for consistency across the app */}
+      <CopilotKit runtimeUrl="/api/copilotkit" agent="marlowe_agent" properties={{ model }}>
+        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+          <CopilotPopup
+            labels={{
+              title: 'Marlowe Assistant',
+              initial: 'Ask about the knowledge graph, frameworks, requirements, or your documents.',
+            }}
+          >
+            <div className="flex flex-col items-center gap-2 mb-2">
+              <VoiceButton />
+            </div>
+          </CopilotPopup>
+        </div>
       </CopilotKit>
     </div>
   )

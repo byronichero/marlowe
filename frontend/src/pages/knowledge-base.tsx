@@ -10,6 +10,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Upload, FileText, Search, Loader2, Download, CheckCircle2, XCircle, Eye, FileDown } from 'lucide-react'
+import { api } from '@/lib/api'
 
 interface DocFile {
   name: string
@@ -37,9 +38,31 @@ export default function KnowledgeBase() {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerDoc, setViewerDoc] = useState<DocFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Array<{ text: string; source: string; score: number }>>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [hasSearched, setHasSearched] = useState(false)
 
   const canPreview = (path: string) =>
     PREVIEW_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(ext))
+
+  const handleSearch = async () => {
+    const q = searchQuery.trim()
+    if (!q) return
+    setSearchError(null)
+    setIsSearching(true)
+    setHasSearched(true)
+    try {
+      const { results } = await api.searchDocuments(q, 15)
+      setSearchResults(results)
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : 'Search failed')
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
 
   useEffect(() => {
     loadDocuments()
@@ -212,12 +235,60 @@ export default function KnowledgeBase() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Input placeholder="Search for content..." className="flex-1" />
-              <Button>Search</Button>
+              <Input
+                placeholder="Search for content..."
+                className="flex-1"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                disabled={isSearching}
+              />
+              <Button onClick={handleSearch} disabled={isSearching || !searchQuery.trim()}>
+                {isSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-1" />
+                    Search
+                  </>
+                )}
+              </Button>
             </div>
-            <div className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
-              Semantic search coming soon. Use the Chat page to ask questions about your documents.
-            </div>
+            {searchError && (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                {searchError}
+              </div>
+            )}
+            {isSearching && (
+              <div className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
+                Searching…
+              </div>
+            )}
+            {!isSearching && hasSearched && searchResults.length === 0 && !searchError && (
+              <div className="rounded-lg border p-4 text-center text-sm text-muted-foreground">
+                No matching chunks. Try different keywords or upload more documents.
+              </div>
+            )}
+            {!isSearching && searchResults.length > 0 && (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {searchResults.map((r, i) => (
+                  <div
+                    key={`${r.source}-${r.score}-${i}`}
+                    className="rounded-lg border bg-muted/30 p-3 text-sm"
+                  >
+                    <p className="font-medium text-muted-foreground text-xs mb-1">
+                      {r.source} · {(r.score * 100).toFixed(0)}% match
+                    </p>
+                    <p className="text-foreground">{r.text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!hasSearched && !isSearching && !searchError && (
+              <p className="text-sm text-muted-foreground">
+                Enter a query and click Search to find relevant passages from your indexed documents.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
