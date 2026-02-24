@@ -17,7 +17,8 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.services.ingest_service import ingest_docs, ingest_single_file
 from app.services.minio_client import upload_file
-from app.services.qdrant_service import delete_collection
+from app.services.ollama_service import ollama_embeddings
+from app.services.qdrant_service import delete_collection, ensure_collection, search
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -163,6 +164,61 @@ async def download_markdown(path: str = Query(..., description="Relative path wi
     except Exception as e:
         logger.exception("Download MD failed for %s", path)
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class SearchResultItem(BaseModel):
+    """One chunk from semantic search."""
+
+    text: str
+    source: str
+    score: float
+
+
+class SearchResponse(BaseModel):
+    """Response for GET /documents/search."""
+
+    results: list[SearchResultItem]
+
+
+@router.get("/search", response_model=SearchResponse)
+async def search_documents(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(10, ge=1, le=50, description="Max results"),
+) -> SearchResponse:
+    """
+    Semantic search over the knowledge base. Embeds the query with Ollama,
+    searches Qdrant, and returns matching chunks with source and score.
+    """
+    try:
+        ensure_collection()
+    except Exception as e:
+        logger.warning("Qdrant collection not ready for search: %s", e)
+        raise HTTPException(
+            status_code=503,
+            detail="Search is temporarily unavailable. Ensure Qdrant is running.",
+        ) from e
+    query_vector = await ollama_embeddings(q.strip(), model=settings.embedding_model)
+    if not query_vector:
+        raise HTTPException(
+            status_code=503,
+            detail="Embedding service unavailable. Ensure Ollama and the embedding model are running.",
+        )
+    points = search(
+        settings.qdrant_collection,
+        query_vector,
+        limit=limit,
+    )
+    results = []
+    for p in points:
+        payload = getattr(p, "payload", None) or {}
+        text = (payload.get("text") or "").strip()
+        source = (payload.get("source") or "").strip()
+        score = float(getattr(p, "score", 0.0))
+        if text:
+            results.append(
+                SearchResultItem(text=text, source=source or "Unknown", score=score)
+            )
+    return SearchResponse(results=results)
 
 
 @router.get("", response_model=list[DocumentListItem])
