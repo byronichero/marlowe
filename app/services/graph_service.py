@@ -340,6 +340,26 @@ async def get_graph_health() -> GraphHealth:
     )
 
 
+async def get_framework_names() -> list[str]:
+    """Return framework names in the knowledge graph (for chat context)."""
+    driver = get_neo4j_driver()
+    names: list[str] = []
+    try:
+        async with driver.session() as session:
+            result = await session.run(
+                "MATCH (f:Framework) RETURN f.name AS name ORDER BY f.name"
+            )
+            async for record in result:
+                name = record.get("name")
+                if name:
+                    names.append(str(name))
+    except Exception as e:
+        logger.warning("Neo4j get_framework_names failed: %s", e)
+    finally:
+        await driver.close()
+    return names
+
+
 async def ensure_indexes(driver: Any = None) -> None:
     """Create basic indexes if not present (optional, for performance)."""
     d = driver or get_neo4j_driver()
