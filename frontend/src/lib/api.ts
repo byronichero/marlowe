@@ -4,7 +4,6 @@ import type {
   FrameworkLibraryItem,
   Requirement,
   Assessment,
-  GapAnalysisReport,
   ChatMessage,
   ChatResponse,
   GraphData,
@@ -136,11 +135,22 @@ export const api = {
   },
   getAssessment: (id: number) => fetchAPI<Assessment>(`assessments/${id}`),
 
-  // Gap analysis (LangGraph)
-  runGapAnalysis: (frameworkId: number) =>
-    fetchAPI<GapAnalysisReport>(`gap-analysis/run?framework_id=${frameworkId}`, {
-      method: 'POST',
-    }),
+  // Gap analysis (background job)
+  startGapAnalysis: (frameworkId: number) =>
+    fetchAPI<{ job_id: string; framework_id: number; message?: string }>(
+      `gap-analysis/run?framework_id=${frameworkId}`,
+      { method: 'POST' }
+    ),
+  getGapAnalysisJobStatus: (jobId: string) =>
+    fetchAPI<{
+      job_id: string
+      status: string
+      percent: number
+      step: string
+      framework_id?: number
+      report?: string | null
+      error?: string | null
+    }>(`gap-analysis/jobs/${jobId}`),
 
   // Chat
   chat: (message: ChatMessage) =>

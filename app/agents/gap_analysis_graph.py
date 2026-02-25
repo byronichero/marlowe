@@ -1,7 +1,7 @@
 """LangGraph gap analysis – multi-agent workflow for compliance gap assessment."""
 
 import logging
-from typing import Any, TypedDict
+from typing import Any, Callable, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
@@ -131,6 +131,48 @@ async def run_gap_analysis(
         config = {"configurable": {}}
         result = await gap_analysis_graph.ainvoke(initial_state, config=config)
         report = result.get("report", "") or result.get("gap_assessment", "")
+        return {"ok": True, "output": report, "error": None}
+    except Exception as e:
+        logger.exception("Gap analysis graph failed")
+        return {"ok": False, "output": "", "error": str(e)}
+
+
+async def run_gap_analysis_with_progress(
+    framework_name: str,
+    requirements_summary: str,
+    evidence_context: str,
+    progress_callback: Callable[[int, str], None] | None = None,
+) -> dict[str, Any]:
+    """
+    Run gap analysis step-by-step with progress callbacks.
+    progress_callback(percent, step) is called after each node (0-33-66-100).
+    """
+    state: GapAnalysisState = {
+        "framework_name": framework_name,
+        "requirements_summary": requirements_summary,
+        "evidence_context": evidence_context,
+        "framework_analysis": "",
+        "evidence_review": "",
+        "gap_assessment": "",
+        "report": "",
+    }
+
+    def _progress(percent: int, step: str) -> None:
+        if progress_callback:
+            progress_callback(percent, step)
+
+    try:
+        _progress(10, "Framework Analyst")
+        out1 = await framework_analyst_node(state)
+        state.update(out1)
+        _progress(40, "Evidence Reviewer")
+        out2 = await evidence_reviewer_node(state)
+        state.update(out2)
+        _progress(70, "Gap Assessor")
+        out3 = await gap_assessor_node(state)
+        state.update(out3)
+        _progress(100, "Complete")
+        report = state.get("report", "") or state.get("gap_assessment", "")
         return {"ok": True, "output": report, "error": None}
     except Exception as e:
         logger.exception("Gap analysis graph failed")

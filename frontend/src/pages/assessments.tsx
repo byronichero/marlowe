@@ -18,6 +18,7 @@ import type { Assessment, Framework, GapAnalysisReport, Requirement } from '@/ty
 import {
   FileSearch,
   FileUp,
+  FileText,
   Loader2,
   Play,
   Plus,
@@ -81,6 +82,13 @@ export default function Assessments() {
   const [runningFrameworkId, setRunningFrameworkId] = useState<number | null>(null)
   const [report, setReport] = useState<GapAnalysisReport | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
+  const [gapAnalysisJob, setGapAnalysisJob] = useState<{
+    job_id: string
+    status: string
+    percent: number
+    step: string
+    framework_id: number
+  } | null>(null)
   const [addFrameworkOpen, setAddFrameworkOpen] = useState(false)
   const [addFrameworkLoading, setAddFrameworkLoading] = useState(false)
   const [addFrameworkError, setAddFrameworkError] = useState<string | null>(null)
@@ -112,6 +120,20 @@ export default function Assessments() {
   const [frameworkEvidence, setFrameworkEvidence] = useState<
     Record<number, { chunk_count: number; documents: string[]; has_evidence: boolean }>
   >({})
+  // Evidence upload (separate dialog and state from "Upload Standard")
+  const [uploadEvidenceOpen, setUploadEvidenceOpen] = useState(false)
+  const [uploadEvidenceFrameworkId, setUploadEvidenceFrameworkId] = useState<number | ''>('')
+  const [uploadEvidenceFile, setUploadEvidenceFile] = useState<File | null>(null)
+  const [uploadEvidenceStartedAt, setUploadEvidenceStartedAt] = useState<number | null>(null)
+  const [uploadEvidenceProgress, setUploadEvidenceProgress] = useState<{
+    job_id: string
+    filename: string
+    status: string
+    chunks?: number
+    percent?: number
+    error?: string
+  } | null>(null)
+  const [showEvidenceBanner, setShowEvidenceBanner] = useState(false)
   const [extractingFrameworkId, setExtractingFrameworkId] = useState<number | null>(null)
   const [extractResult, setExtractResult] = useState<{ frameworkId: number; message: string } | null>(null)
   const [extractScope, setExtractScope] = useState<Record<number, string>>({})
@@ -215,6 +237,13 @@ export default function Assessments() {
     setUploadStandardOpen(true)
   }
 
+  function openUploadEvidence(frameworkId?: number) {
+    setUploadEvidenceFrameworkId(frameworkId ?? '')
+    setUploadEvidenceFile(null)
+    setUploadEvidenceProgress(null)
+    setUploadEvidenceOpen(true)
+  }
+
   async function handleUploadStandard(e: React.FormEvent) {
     e.preventDefault()
     const fwId = typeof uploadFrameworkId === 'number' ? uploadFrameworkId : null
@@ -256,6 +285,47 @@ export default function Assessments() {
     }
   }
 
+  async function handleUploadEvidence(e: React.FormEvent) {
+    e.preventDefault()
+    const fwId = typeof uploadEvidenceFrameworkId === 'number' ? uploadEvidenceFrameworkId : null
+    if (!fwId || !uploadEvidenceFile) return
+    try {
+      setUploadEvidenceStartedAt(Date.now())
+      setShowEvidenceBanner(true)
+      setUploadEvidenceProgress({
+        job_id: '',
+        filename: uploadEvidenceFile.name,
+        status: 'uploading',
+        percent: 0,
+      })
+      setUploadEvidenceOpen(false)
+      const result = await api.uploadFrameworkDocument(fwId, uploadEvidenceFile, (percent) => {
+        setUploadEvidenceProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'uploading',
+                percent,
+              }
+            : prev
+        )
+      })
+      setUploadEvidenceProgress({
+        job_id: result.job_id,
+        filename: result.filename,
+        status: 'pending',
+      })
+    } catch (err) {
+      setShowEvidenceBanner(true)
+      setUploadEvidenceProgress({
+        job_id: '',
+        filename: uploadEvidenceFile.name,
+        status: 'failed',
+        error: err instanceof Error ? err.message : 'Upload failed',
+      })
+    }
+  }
+
   useEffect(() => {
     if (uploadProgress && ['pending', 'running'].includes(uploadProgress.status)) {
       const poll = async () => {
@@ -276,6 +346,27 @@ export default function Assessments() {
       return () => clearInterval(id)
     }
   }, [uploadProgress, uploadFrameworkId])
+
+  useEffect(() => {
+    if (uploadEvidenceProgress && ['pending', 'running'].includes(uploadEvidenceProgress.status)) {
+      const poll = async () => {
+        try {
+          const job = await api.getUploadJobStatus(uploadEvidenceProgress.job_id)
+          setUploadEvidenceProgress(job)
+          if (job.status === 'completed') {
+            refreshFrameworkEvidence()
+            setUploadEvidenceFrameworkId('')
+            setUploadEvidenceFile(null)
+            setUploadEvidenceStartedAt(null)
+          }
+        } catch {
+          // Keep polling
+        }
+      }
+      const id = setInterval(poll, 2000)
+      return () => clearInterval(id)
+    }
+  }, [uploadEvidenceProgress, uploadEvidenceFrameworkId])
 
   function openAddFramework(template?: 'ISO' | 'NIST') {
     if (template) {
@@ -459,30 +550,81 @@ export default function Assessments() {
   async function handleRunGapAnalysis(frameworkId: number) {
     setRunningFrameworkId(frameworkId)
     setReport(null)
+    setGapAnalysisJob(null)
     setReportOpen(true)
     try {
-      const result = await api.runGapAnalysis(frameworkId)
-      setReport(result)
-      setAssessments((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          title: frameworks.find((f) => f.id === frameworkId)?.name ?? `Framework ${frameworkId}`,
-          status: 'completed',
-          framework_id: frameworkId,
-          organization_id: null,
-          started_at: null,
-          completed_at: new Date().toISOString().slice(0, 10),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
-    } catch {
-      setReport({ ok: false, framework_id: frameworkId, report: 'Gap analysis failed.' })
-    } finally {
+      const { job_id, framework_id } = await api.startGapAnalysis(frameworkId)
+      setGapAnalysisJob({
+        job_id,
+        status: 'pending',
+        percent: 0,
+        step: 'Starting...',
+        framework_id,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gap analysis failed.'
+      setReport({ ok: false, framework_id: frameworkId, report: message })
       setRunningFrameworkId(null)
     }
   }
+
+  useEffect(() => {
+    if (!gapAnalysisJob || !['pending', 'running'].includes(gapAnalysisJob.status)) return
+    const poll = async () => {
+      try {
+        const status = await api.getGapAnalysisJobStatus(gapAnalysisJob.job_id)
+        setGapAnalysisJob((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: status.status,
+                percent: status.percent,
+                step: status.step,
+              }
+            : prev
+        )
+        if (status.status === 'completed') {
+          setReport({
+            ok: true,
+            framework_id: status.framework_id ?? gapAnalysisJob.framework_id,
+            report: status.report ?? '',
+          })
+          setGapAnalysisJob(null)
+          setRunningFrameworkId(null)
+          setReportOpen(true)
+          setAssessments((prev) => [
+            ...prev,
+            {
+              id: Date.now(),
+              title:
+                frameworks.find((f) => f.id === gapAnalysisJob.framework_id)?.name ??
+                `Framework ${gapAnalysisJob.framework_id}`,
+              status: 'completed',
+              framework_id: gapAnalysisJob.framework_id,
+              organization_id: null,
+              started_at: null,
+              completed_at: new Date().toISOString().slice(0, 10),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ])
+        } else if (status.status === 'failed') {
+          setReport({
+            ok: false,
+            framework_id: gapAnalysisJob.framework_id,
+            report: status.error ?? 'Gap analysis failed.',
+          })
+          setGapAnalysisJob(null)
+          setRunningFrameworkId(null)
+          setReportOpen(true)
+        }
+      } catch {
+        // Keep polling
+      }
+    }
+    const id = setInterval(poll, 2000)
+    return () => clearInterval(id)
+  }, [gapAnalysisJob, frameworks])
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -561,6 +703,60 @@ export default function Assessments() {
         </Card>
       )}
 
+      {showEvidenceBanner && uploadEvidenceProgress && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardHeader className="py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">Uploading evidence</CardTitle>
+                <CardDescription>
+                  {uploadEvidenceProgress.filename} — {getUploadPhase(uploadEvidenceProgress.status).label}
+                </CardDescription>
+              </div>
+              {(uploadEvidenceProgress.status === 'completed' || uploadEvidenceProgress.status === 'failed') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEvidenceBanner(false)}
+                >
+                  Dismiss
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{uploadEvidenceProgress.filename}</span>
+              {uploadEvidenceStartedAt && (
+                <span>Elapsed {formatElapsed(Date.now() - uploadEvidenceStartedAt)}</span>
+              )}
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted">
+              <div
+                className={`h-2 rounded-full ${
+                  uploadEvidenceProgress.status === 'failed' ? 'bg-destructive' : 'bg-primary'
+                }`}
+                style={{
+                  width: `${
+                    uploadEvidenceProgress.status === 'uploading'
+                      ? uploadEvidenceProgress.percent ?? 10
+                      : getUploadPhase(uploadEvidenceProgress.status).percent
+                  }%`,
+                }}
+              />
+            </div>
+            {uploadEvidenceProgress.chunks && uploadEvidenceProgress.status !== 'failed' && (
+              <div className="text-xs text-muted-foreground">
+                {uploadEvidenceProgress.chunks} chunks indexed
+              </div>
+            )}
+            {uploadEvidenceProgress.status === 'failed' && uploadEvidenceProgress.error && (
+              <div className="text-xs text-destructive">{uploadEvidenceProgress.error}</div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* First step required – add framework and at least one requirement */}
       {!isLoadingFrameworks && !isLoadingRequirements && needsFirstStep && (
         <Card className="border-primary/50 bg-primary/5">
@@ -632,21 +828,38 @@ export default function Assessments() {
               </div>
             </div>
             {hasFramework && !hasEvidence && (
-              <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
-                <h4 className="font-medium mb-1">2. Upload standard document</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Upload the PDF or document for this framework so gap analysis has evidence to
-                  assess.
-                </p>
-                <Button onClick={() => openUploadStandard()} disabled={frameworks.length === 0}>
-                  <FileUp className="mr-2 h-4 w-4" />
-                  Upload Standard
-                </Button>
-              </div>
+              <>
+                <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
+                  <h4 className="font-medium mb-1">2. Upload standard document</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Upload the PDF or document for this framework so gap analysis has evidence to
+                    assess.
+                  </p>
+                  <Button onClick={() => openUploadStandard()} disabled={frameworks.length === 0}>
+                    <FileUp className="mr-2 h-4 w-4" />
+                    Upload Standard
+                  </Button>
+                </div>
+                <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
+                  <h4 className="font-medium mb-1">3. Upload evidence</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Upload evidence for the selected framework (policies, procedures, or standard
+                    PDF) for gap analysis.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => openUploadEvidence()}
+                    disabled={frameworks.length === 0}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Upload Evidence
+                  </Button>
+                </div>
+              </>
             )}
             {hasFramework && hasEvidence && !hasRequirement && (
               <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
-                <h4 className="font-medium mb-1">3. Add at least one requirement</h4>
+                <h4 className="font-medium mb-1">4. Add at least one requirement</h4>
                 <p className="text-sm text-muted-foreground mb-4">
                   Add a clause or control to assess. At least one requirement is required before
                   running gap analysis.
@@ -680,6 +893,10 @@ export default function Assessments() {
                 <Button onClick={() => openUploadStandard()} variant="outline" size="sm">
                   <FileUp className="mr-2 h-4 w-4" />
                   Upload Standard
+                </Button>
+                <Button onClick={() => openUploadEvidence()} variant="outline" size="sm">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Upload Evidence
                 </Button>
                 <Button onClick={openAddRequirement} variant="outline" size="sm">
                   <Plus className="mr-2 h-4 w-4" />
@@ -781,6 +998,15 @@ export default function Assessments() {
                       >
                         <FileUp className="mr-2 h-4 w-4" />
                         Upload
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openUploadEvidence(fw.id)}
+                        title={`Upload evidence document for ${fw.name}`}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Upload Evidence
                       </Button>
                       {hasFwEvidence && (
                         <>
@@ -1109,6 +1335,152 @@ export default function Assessments() {
         </DialogContent>
       </Dialog>
 
+      {/* Upload evidence document dialog (separate from Upload Standard) */}
+      <Dialog
+        open={uploadEvidenceOpen}
+        onOpenChange={(open) => {
+          setUploadEvidenceOpen(open)
+          if (!open) {
+            if (!uploadEvidenceProgress || ['completed', 'failed'].includes(uploadEvidenceProgress.status)) {
+              setUploadEvidenceProgress(null)
+              setUploadEvidenceFrameworkId('')
+              setUploadEvidenceFile(null)
+              setUploadEvidenceStartedAt(null)
+            }
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Evidence Document</DialogTitle>
+            <DialogDescription>
+              Upload evidence for the selected framework (e.g. policies, procedures, or the standard
+              PDF). The document will be linked to that framework and used by gap analysis to assess
+              compliance.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUploadEvidence} className="space-y-4 mt-2">
+            {uploadEvidenceProgress?.status === 'failed' && (
+              <div className="rounded-md bg-destructive/10 text-destructive text-sm px-3 py-2">
+                {uploadEvidenceProgress.error}
+              </div>
+            )}
+            {uploadEvidenceProgress?.status === 'completed' && (
+              <div className="rounded-md bg-green-500/10 text-green-700 text-sm px-3 py-2 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Uploaded {uploadEvidenceProgress.filename} — {uploadEvidenceProgress.chunks ?? 0} chunks indexed
+              </div>
+            )}
+            {(!uploadEvidenceProgress || ['failed', 'completed'].includes(uploadEvidenceProgress.status)) && (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="upload-evidence-framework" className="text-sm font-medium">
+                    Framework *
+                  </label>
+                  <Select
+                    id="upload-evidence-framework"
+                    value={uploadEvidenceFrameworkId}
+                    onChange={(e) =>
+                      setUploadEvidenceFrameworkId(e.target.value ? Number(e.target.value) : '')
+                    }
+                    required
+                  >
+                    <option value="">Select framework…</option>
+                    {frameworks.map((fw) => (
+                      <option key={fw.id} value={fw.id}>
+                        {fw.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="upload-evidence-file" className="text-sm font-medium">
+                    Evidence document *
+                  </label>
+                  <Input
+                    id="upload-evidence-file"
+                    type="file"
+                    accept=".pdf,.docx,.pptx,.xlsx,.html,.htm,.md,.txt"
+                    onChange={(e) => setUploadEvidenceFile(e.target.files?.[0] ?? null)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    PDF, DOCX, PPTX, XLSX, HTML, Markdown, or TXT
+                  </p>
+                </div>
+              </>
+            )}
+            {uploadEvidenceProgress?.status === 'pending' && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Processing {uploadEvidenceProgress.filename}…
+              </div>
+            )}
+            {uploadEvidenceProgress?.status === 'uploading' && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Uploading {uploadEvidenceProgress.filename}…
+              </div>
+            )}
+            {uploadEvidenceProgress?.status === 'running' && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Indexing {uploadEvidenceProgress.filename}…
+              </div>
+            )}
+            {uploadEvidenceProgress &&
+              ['uploading', 'pending', 'running', 'completed', 'failed'].includes(uploadEvidenceProgress.status) && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{getUploadPhase(uploadEvidenceProgress.status).label}</span>
+                  {uploadEvidenceStartedAt && (
+                    <span>Elapsed {formatElapsed(Date.now() - uploadEvidenceStartedAt)}</span>
+                  )}
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div
+                    className={`h-2 rounded-full ${
+                      uploadEvidenceProgress.status === 'failed' ? 'bg-destructive' : 'bg-primary'
+                    }`}
+                    style={{
+                      width: `${
+                        uploadEvidenceProgress.status === 'uploading'
+                          ? uploadEvidenceProgress.percent ?? 10
+                          : getUploadPhase(uploadEvidenceProgress.status).percent
+                      }%`,
+                    }}
+                  />
+                </div>
+                {uploadEvidenceProgress.chunks && uploadEvidenceProgress.status !== 'failed' && (
+                  <div className="text-xs text-muted-foreground">
+                    {uploadEvidenceProgress.chunks} chunks indexed
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setUploadEvidenceOpen(false)
+                  setUploadEvidenceProgress(null)
+                  setUploadEvidenceFrameworkId('')
+                }}
+                disabled={['pending', 'running'].includes(uploadEvidenceProgress?.status ?? '')}
+              >
+                {['pending', 'running'].includes(uploadEvidenceProgress?.status ?? '') ? 'Processing…' : 'Close'}
+              </Button>
+              {(!uploadEvidenceProgress || ['failed', 'completed'].includes(uploadEvidenceProgress.status)) && (
+                <Button type="submit" disabled={!uploadEvidenceFile || !uploadEvidenceFrameworkId}>
+                  Upload Evidence
+                </Button>
+              )}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Upload standard document dialog */}
       <Dialog
         open={uploadStandardOpen}
@@ -1260,18 +1632,36 @@ export default function Assessments() {
           <DialogHeader>
             <DialogTitle>Gap Analysis Report</DialogTitle>
             <DialogDescription>
-              {report?.ok ? 'LangGraph agents have completed the analysis.' : 'An error occurred during gap analysis.'}
+              {gapAnalysisJob
+                ? 'Running LangGraph agents. This may take several minutes.'
+                : report?.ok
+                  ? 'LangGraph agents have completed the analysis.'
+                  : report
+                    ? 'An error occurred during gap analysis.'
+                    : 'Gap analysis report will appear here.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4">
-            {runningFrameworkId != null && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Running LangGraph agents (Framework Analyst → Evidence Reviewer → Gap Assessor)…
+          <div className="mt-4 space-y-4">
+            {gapAnalysisJob && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{gapAnalysisJob.step}</span>
+                  <span className="font-medium">{gapAnalysisJob.percent}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${gapAnalysisJob.percent}%` }}
+                  />
+                </div>
               </div>
             )}
-            {runningFrameworkId == null && report && (
-              <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-md font-sans">
+            {!gapAnalysisJob && report && (
+              <pre
+                className={`whitespace-pre-wrap text-sm p-4 rounded-md font-sans ${
+                  report.ok ? 'bg-muted/50' : 'bg-destructive/10 text-destructive'
+                }`}
+              >
                 {report.report || 'No report content.'}
               </pre>
             )}
