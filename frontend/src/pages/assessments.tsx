@@ -929,18 +929,6 @@ export default function Assessments() {
             </div>
             <div className="flex flex-col items-end gap-1">
               <div className="flex gap-2 flex-wrap justify-end">
-                <Button onClick={() => openUploadStandard()} variant="outline" size="sm">
-                  <FileUp className="mr-2 h-4 w-4" />
-                  Upload Standard
-                </Button>
-                <Button onClick={openAddRequirement} variant="outline" size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Requirement
-                </Button>
-                <Button onClick={() => openUploadEvidence()} variant="outline" size="sm">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Upload Evidence
-                </Button>
                 <Button onClick={() => openAddFramework()} size="sm">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Framework
