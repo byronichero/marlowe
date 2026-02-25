@@ -16,6 +16,8 @@ import { useChatModel } from '@/contexts/chat-model'
 import { api } from '@/lib/api'
 import type { Assessment, Framework, GapAnalysisReport, Requirement } from '@/types'
 import {
+  AlertTriangle,
+  FileDown,
   FileSearch,
   FileUp,
   FileText,
@@ -82,6 +84,7 @@ export default function Assessments() {
   const [runningFrameworkId, setRunningFrameworkId] = useState<number | null>(null)
   const [report, setReport] = useState<GapAnalysisReport | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
+  const [assessmentReports, setAssessmentReports] = useState<Record<number, GapAnalysisReport>>({})
   const [gapAnalysisJob, setGapAnalysisJob] = useState<{
     job_id: string
     status: string
@@ -584,18 +587,21 @@ export default function Assessments() {
             : prev
         )
         if (status.status === 'completed') {
-          setReport({
+          const newAssessmentId = Date.now()
+          const completedReport: GapAnalysisReport = {
             ok: true,
             framework_id: status.framework_id ?? gapAnalysisJob.framework_id,
             report: status.report ?? '',
-          })
+          }
+          setReport(completedReport)
           setGapAnalysisJob(null)
           setRunningFrameworkId(null)
           setReportOpen(true)
+          setAssessmentReports((prev) => ({ ...prev, [newAssessmentId]: completedReport }))
           setAssessments((prev) => [
             ...prev,
             {
-              id: Date.now(),
+              id: newAssessmentId,
               title:
                 frameworks.find((f) => f.id === gapAnalysisJob.framework_id)?.name ??
                 `Framework ${gapAnalysisJob.framework_id}`,
@@ -625,6 +631,31 @@ export default function Assessments() {
     const id = setInterval(poll, 2000)
     return () => clearInterval(id)
   }, [gapAnalysisJob, frameworks])
+
+  function openReportForAssessment(assessment: Assessment) {
+    const stored = assessmentReports[assessment.id]
+    setReport(stored ?? null)
+    setReportOpen(true)
+  }
+
+  function downloadReportAsMd(r: GapAnalysisReport) {
+    const frameworkName =
+      frameworks.find((f) => f.id === r.framework_id)?.name ?? `framework-${r.framework_id}`
+    const slug = frameworkName
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9]+/g, '-')
+      .replaceAll(/^-|-$/g, '')
+    const date = new Date().toISOString().slice(0, 10)
+    const filename = `gap-analysis-${slug}-${date}.md`
+    const content = `# Gap Analysis Report\n\n**Framework:** ${frameworkName}\n**Date:** ${date}\n\n---\n\n${r.report || 'No report content.'}\n`
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -1112,7 +1143,16 @@ export default function Assessments() {
                         {getStatusBadge(assessment.status)}
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openReportForAssessment(assessment)}
+                      title={
+                        assessmentReports[assessment.id]
+                          ? 'View gap analysis report'
+                          : 'Report available only for analyses run in this session'
+                      }
+                    >
                       View Details
                     </Button>
                   </div>
@@ -1642,6 +1682,13 @@ export default function Assessments() {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">
+            <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 flex items-start gap-2 text-sm text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>Gap analyses are not saved.</strong> Download the report in MD format before
+                closing. Reports are only available in this session.
+              </span>
+            </div>
             {gapAnalysisJob && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -1657,13 +1704,35 @@ export default function Assessments() {
               </div>
             )}
             {!gapAnalysisJob && report && (
-              <pre
-                className={`whitespace-pre-wrap text-sm p-4 rounded-md font-sans ${
-                  report.ok ? 'bg-muted/50' : 'bg-destructive/10 text-destructive'
-                }`}
-              >
-                {report.report || 'No report content.'}
-              </pre>
+              <>
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadReportAsMd(report)}
+                    className="gap-2"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Download MD
+                  </Button>
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-md border">
+                  <pre
+                    className={`whitespace-pre-wrap text-sm p-4 font-sans ${
+                      report.ok ? 'bg-muted/50' : 'bg-destructive/10 text-destructive'
+                    }`}
+                  >
+                    {report.report || 'No report content.'}
+                  </pre>
+                </div>
+              </>
+            )}
+            {!gapAnalysisJob && !report && (
+              <p className="text-sm text-muted-foreground py-4">
+                No report available. Run gap analysis on a framework above to generate a report.
+                Reports for past assessments are only available if the analysis was run in this
+                browser session.
+              </p>
             )}
           </div>
         </DialogContent>
