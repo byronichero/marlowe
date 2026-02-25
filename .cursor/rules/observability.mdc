@@ -1,0 +1,17 @@
+---
+description: Observability preferences for Marlowe (OTel, LangChain, local models)
+globs: app/services/otel.py, app/agents/**/*.py, observability/**/*
+alwaysApply: false
+---
+
+# Observability
+
+## Token Usage
+
+For local open-source models (e.g. Ollama), **token usage tracking is not a priority**. Focus on:
+
+- Node/agent execution traces
+- LLM call spans
+- Chain/graph flow visibility
+
+Do not add token counting or cost metrics to observability unless explicitly requested.
