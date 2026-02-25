@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -73,8 +74,11 @@ function slugify(value: string): string {
     .replaceAll(/(?:^-+|-+$)/g, '')
 }
 
+const LAST_GAP_ANALYSIS_KEY = 'lastGapAnalysisFrameworkId'
+
 export default function Assessments() {
   const { model } = useChatModel()
+  const navigate = useNavigate()
   const [frameworks, setFrameworks] = useState<Framework[]>([])
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [assessments, setAssessments] = useState<Assessment[]>([])
@@ -587,10 +591,12 @@ export default function Assessments() {
             : prev
         )
         if (status.status === 'completed') {
+          const fwId = status.framework_id ?? gapAnalysisJob.framework_id
+          localStorage.setItem(LAST_GAP_ANALYSIS_KEY, String(fwId))
           const newAssessmentId = Date.now()
           const completedReport: GapAnalysisReport = {
             ok: true,
-            framework_id: status.framework_id ?? gapAnalysisJob.framework_id,
+            framework_id: fwId,
             report: status.report ?? '',
           }
           setReport(completedReport)
@@ -1706,7 +1712,7 @@ export default function Assessments() {
             )}
             {!gapAnalysisJob && report && (
               <>
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1715,6 +1721,20 @@ export default function Assessments() {
                   >
                     <FileDown className="h-4 w-4" />
                     Download MD
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      const fwId = report.framework_id
+                      if (fwId != null) {
+                        localStorage.setItem(LAST_GAP_ANALYSIS_KEY, String(fwId))
+                        navigate(`/knowledge-graph?framework_id=${fwId}`)
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    View in Knowledge Graph
                   </Button>
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-md border">
