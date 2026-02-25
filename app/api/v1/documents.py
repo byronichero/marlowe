@@ -15,6 +15,7 @@ from app.services.document_service import (
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.services.evidence_bridge_service import create_evidence_for_uploaded_document
 from app.services.ingest_service import ingest_docs, ingest_single_file
 from app.services.minio_client import upload_file
 from app.services.ollama_service import ollama_embeddings
@@ -261,6 +262,12 @@ async def _run_upload_job(
             _documents_store.append(
                 {"id": doc_id, "filename": filename, "object_key": object_key}
             )
+            if framework_id is not None:
+                await create_evidence_for_uploaded_document(
+                    framework_id=framework_id,
+                    object_key=object_key,
+                    filename=filename,
+                )
         else:
             _upload_jobs[job_id].update(
                 status="failed",
