@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { api } from '@/lib/api'
 import type { Framework, GraphHealth, GraphStats } from '@/types'
-import { Network, Loader2, RefreshCw, GitCompare, LocateFixed, Info } from 'lucide-react'
+import { Network, Loader2, RefreshCw, GitCompare, LocateFixed, Info, FileSearch } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface GraphApiNode {
@@ -62,6 +62,8 @@ interface CrosswalkResponse {
   framework_b: { id: number; name: string }
 }
 
+const LAST_GAP_ANALYSIS_KEY = 'lastGapAnalysisFrameworkId'
+
 const FEDRAMP_BASELINE_INFO: Record<
   string,
   { level: number; label: string; count: number; color: { active: string; inactive: string } }
@@ -114,7 +116,18 @@ export default function KnowledgeGraph() {
   const [graphStats, setGraphStats] = useState<GraphStats | null>(null)
   const [graphHealth, setGraphHealth] = useState<GraphHealth | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const lastGapFrameworkId = (() => {
+    try {
+      const id = localStorage.getItem(LAST_GAP_ANALYSIS_KEY)
+      return id ? Number(id) : null
+    } catch {
+      return null
+    }
+  })()
+  const lastGapFramework = lastGapFrameworkId != null
+    ? frameworks.find((f) => f.id === lastGapFrameworkId)
+    : null
   const [graphFrameworkId, setGraphFrameworkId] = useState<number | ''>('')
   const [fedrampBaseline, setFedrampBaseline] = useState<string>('')
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -260,10 +273,13 @@ export default function KnowledgeGraph() {
       await loadGraphMeta(graphFrameworkId, fedrampBaseline)
       const f = result.frameworks ?? 0
       const r = result.requirements ?? 0
+      const e = result.evidence ?? 0
       if (f === 0 && r === 0) {
         setSyncSuccess('Sync completed but 0 frameworks and 0 requirements in database. Add frameworks in Standards Library first.')
       } else {
-        setSyncSuccess(`Synced ${f} framework(s), ${r} requirement(s).`)
+        const parts = [`Synced ${f} framework(s), ${r} requirement(s)`]
+        if (e > 0) parts.push(`${e} evidence`)
+        setSyncSuccess(parts.join(', ') + '.')
       }
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed')
@@ -391,13 +407,20 @@ export default function KnowledgeGraph() {
     networkRef.current?.fit?.({ animation: { duration: 400 } })
   }
 
+  function handleViewLastGapAnalysis() {
+    if (!lastGapFramework) return
+    setGraphFrameworkId(lastGapFramework.id)
+    setSearchParams({ framework_id: String(lastGapFramework.id) })
+    if (lastGapFramework.id !== nistFramework?.id) setFedrampBaseline('')
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-4xl font-bold tracking-tight">Knowledge Graph</h1>
         <p className="text-base text-muted-foreground mt-1">
-          Explore relationships between frameworks, requirements, and crosswalk mappings between
-          standards
+          Explore relationships between frameworks, requirements, evidence linked to requirements,
+          and crosswalk mappings between standards
         </p>
       </div>
 
@@ -411,7 +434,8 @@ export default function KnowledgeGraph() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             Frameworks: {graphStats?.framework_nodes ?? 0} • Requirements:{' '}
-            {graphStats?.requirement_nodes ?? 0}
+            {graphStats?.requirement_nodes ?? 0} • Evidence:{' '}
+            {graphStats?.evidence_nodes ?? 0}
           </CardContent>
         </Card>
         <Card>
@@ -457,10 +481,23 @@ export default function KnowledgeGraph() {
             <div>
               <CardTitle>Graph Visualization</CardTitle>
               <CardDescription>
-                Frameworks and requirements from Neo4j. Crosswalk mappings appear as dashed edges.
+                Frameworks, requirements, and evidence from Neo4j. Evidence nodes show standards-to-evidence links.
+                Crosswalk mappings appear as dashed edges.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-sm">
+              {lastGapFramework && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewLastGapAnalysis}
+                  title={`Show graph for last gap analysis (${lastGapFramework.name})`}
+                  className="gap-2"
+                >
+                  <FileSearch className="h-4 w-4" />
+                  View last gap analysis
+                </Button>
+              )}
               <div className="flex items-center gap-2">
                 <label htmlFor="graph-framework" className="text-muted-foreground">
                   Framework
@@ -602,7 +639,7 @@ export default function KnowledgeGraph() {
               <div className="text-center text-muted-foreground max-w-md">
                 <Network className="mx-auto h-16 w-16 mb-4 opacity-50" />
                 <p>
-                  {graphError ?? 'No graph data yet. Sync from DB to load frameworks and requirements.'}
+                  {graphError ?? 'No graph data yet. Sync from DB to load frameworks, requirements, and evidence.'}
                 </p>
                 {graphError && (
                   <p className="mt-2 text-sm">

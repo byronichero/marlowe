@@ -190,9 +190,10 @@ export const api = {
   },
   getGraphHealth: () => fetchAPI<GraphHealth>('graph/health'),
   syncGraph: () =>
-    fetchAPI<{ ok: boolean; frameworks: number; requirements: number }>('graph/sync', {
-      method: 'POST',
-    }),
+    fetchAPI<{ ok: boolean; frameworks: number; requirements: number; evidence?: number }>(
+      'graph/sync',
+      { method: 'POST' }
+    ),
   getCrosswalk: (frameworkA: number, frameworkB: number) =>
     fetchAPI<{
       mappings: Array<{

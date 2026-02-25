@@ -88,6 +88,7 @@ export interface GraphStats {
   framework_nodes: number
   requirement_nodes: number
   assessment_nodes: number
+  evidence_nodes?: number
   avg_relationships_per_requirement: number
 }
 
