@@ -28,6 +28,10 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Generated synthetic data (run scripts/synth_iso27001.py or scripts/synth_fedramp_low.py to create)
+synthetic_iso27001/
+fedramp_low_demo/
+
 # Licensed / copyrighted documents – do not commit
 docs/licensed/
 docs/**/ISO*42001*
