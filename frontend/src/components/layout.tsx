@@ -20,13 +20,17 @@ import {
   Moon,
   Sun,
   Monitor,
+  GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigationSections = [
   {
     label: 'Core',
-    items: [{ name: 'Home', href: '/', icon: Home }],
+    items: [
+      { name: 'Home', href: '/', icon: Home },
+      { name: 'Getting Started', href: '/tutorial', icon: GraduationCap },
+    ],
   },
   {
     label: 'Knowledge',

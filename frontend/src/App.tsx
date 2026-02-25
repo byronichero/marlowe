@@ -8,6 +8,7 @@ import Reports from './pages/reports'
 import StandardsLibrary from './pages/standards-library'
 import Faq from './pages/faq'
 import Help from './pages/help'
+import Tutorial from './pages/tutorial'
 import AboutMarlowe from './pages/about-marlowe'
 import AdminObservability from './pages/admin-observability'
 import Login from './pages/login'
@@ -24,6 +25,7 @@ function App() {
         <Route path="reports" element={<Reports />} />
         <Route path="faq" element={<Faq />} />
         <Route path="help" element={<Help />} />
+        <Route path="tutorial" element={<Tutorial />} />
         <Route path="about-marlowe" element={<AboutMarlowe />} />
         <Route path="admin/observability" element={<AdminObservability />} />
       </Route>

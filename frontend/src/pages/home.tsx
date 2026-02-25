@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Database,
+  GraduationCap,
   MessageSquare,
   Network,
   Upload,
@@ -168,6 +169,10 @@ export default function Home() {
             <CardTitle className="text-sm">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5 p-3 pt-0">
+            <Link to="/tutorial" className={quickActionLink}>
+              <GraduationCap className="h-4 w-4 shrink-0 text-primary" />
+              <span>Getting Started</span>
+            </Link>
             <Link to="/knowledge-base" className={quickActionLink}>
               <Database className="h-4 w-4 shrink-0 text-primary" />
               <span>AI Knowledge Base</span>
