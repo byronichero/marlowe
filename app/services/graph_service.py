@@ -121,7 +121,7 @@ async def _build_framework_graph(
             MATCH (f:Framework {id: $fw_id})
             OPTIONAL MATCH (r:Requirement)-[:BELONGS_TO]->(f)
             WITH f, collect(r) AS reqs
-            UNWIND [f] + [x IN reqs WHERE x IS NOT NULL | x] AS n
+            UNWIND [f] + [x IN reqs WHERE x IS NOT NULL] AS n
             RETURN elementId(n) AS neo4j_id, labels(n)[0] AS label,
                    n.id AS custom_id, n.name AS name, n.identifier AS identifier
             """,
@@ -168,6 +168,65 @@ async def _build_framework_graph(
                     type=record["rel"] or "references",
                 )
             )
+    # Include Evidence nodes and EVIDENCES edges for this framework
+    if control_ids:
+        ev_node_result = await session.run(
+            """
+            MATCH (e:Evidence)-[:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {id: $fw_id})
+            WHERE r.identifier IN $control_ids
+            RETURN elementId(e) AS neo4j_id, labels(e)[0] AS label,
+                   e.id AS custom_id, e.name AS name, e.identifier AS identifier
+            """,
+            fw_id=f"framework_{framework_id}",
+            control_ids=control_ids,
+        )
+        ev_edge_result = await session.run(
+            """
+            MATCH (e:Evidence)-[rel:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {id: $fw_id})
+            WHERE r.identifier IN $control_ids
+            RETURN elementId(e) AS src, elementId(r) AS tgt, type(rel) AS rel
+            """,
+            fw_id=f"framework_{framework_id}",
+            control_ids=control_ids,
+        )
+    else:
+        ev_node_result = await session.run(
+            """
+            MATCH (e:Evidence)-[:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {id: $fw_id})
+            RETURN elementId(e) AS neo4j_id, labels(e)[0] AS label,
+                   e.id AS custom_id, e.name AS name, e.identifier AS identifier
+            """,
+            fw_id=f"framework_{framework_id}",
+        )
+        ev_edge_result = await session.run(
+            """
+            MATCH (e:Evidence)-[rel:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {id: $fw_id})
+            RETURN elementId(e) AS src, elementId(r) AS tgt, type(rel) AS rel
+            """,
+            fw_id=f"framework_{framework_id}",
+        )
+    async for record in ev_node_result:
+        neo4j_id = record["neo4j_id"] or ""
+        custom_id = record["custom_id"]
+        lbl = record["label"] or "Evidence"
+        name = record["name"] or record["identifier"] or custom_id or neo4j_id
+        nid = str(custom_id) if custom_id else neo4j_id
+        if nid in seen_nids:
+            continue
+        seen_nids.add(nid)
+        id_map[neo4j_id] = nid
+        nodes.append(GraphNode(id=nid, label=str(name), type=lbl, properties={"name": name}))
+    async for record in ev_edge_result:
+        src = id_map.get(record["src"], record["src"])
+        tgt = id_map.get(record["tgt"], record["tgt"])
+        if src and tgt:
+            edges.append(
+                GraphEdge(
+                    source=src,
+                    target=tgt,
+                    type=record["rel"] or "EVIDENCES",
+                )
+            )
     return nodes, edges
 
 
@@ -200,6 +259,7 @@ async def get_graph_stats(
     framework_nodes = node_counts.get("framework", 0)
     requirement_nodes = node_counts.get("requirement", 0)
     assessment_nodes = node_counts.get("assessment", 0)
+    evidence_nodes = node_counts.get("evidence", 0)
     avg_per_requirement = (
         total_relationships / requirement_nodes if requirement_nodes > 0 else 0.0
     )
@@ -209,6 +269,7 @@ async def get_graph_stats(
         framework_nodes=framework_nodes,
         requirement_nodes=requirement_nodes,
         assessment_nodes=assessment_nodes,
+        evidence_nodes=evidence_nodes,
         avg_relationships_per_requirement=round(avg_per_requirement, 2),
     )
 
@@ -367,6 +428,7 @@ async def ensure_indexes(driver: Any = None) -> None:
         async with d.session() as session:
             await session.run("CREATE INDEX framework_id IF NOT EXISTS FOR (f:Framework) ON (f.id)")
             await session.run("CREATE INDEX requirement_id IF NOT EXISTS FOR (r:Requirement) ON (r.id)")
+            await session.run("CREATE INDEX evidence_id IF NOT EXISTS FOR (e:Evidence) ON (e.id)")
     except Exception as e:
         logger.warning("Neo4j ensure_indexes: %s", e)
     finally:

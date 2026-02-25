@@ -8,7 +8,7 @@ class GraphNode(BaseModel):
 
     id: str = Field(..., description="Node identifier")
     label: str = Field(..., description="Display label")
-    type: str = Field(..., description="Node type: framework, requirement, assessment")
+    type: str = Field(..., description="Node type: framework, requirement, assessment, evidence")
     properties: dict = Field(default_factory=dict)
 
 
@@ -35,6 +35,7 @@ class GraphStats(BaseModel):
     framework_nodes: int = Field(..., description="Framework node count")
     requirement_nodes: int = Field(..., description="Requirement node count")
     assessment_nodes: int = Field(..., description="Assessment node count")
+    evidence_nodes: int = Field(0, description="Evidence node count (standards-to-evidence links)")
     avg_relationships_per_requirement: float = Field(
         ..., description="Average relationships per requirement node"
     )

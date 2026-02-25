@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models import Evidence
 from app.schemas import EvidenceCreate, EvidenceRead
+from app.services.graph_sync import delete_evidence_from_neo4j, sync_evidence_to_neo4j
 
 router = APIRouter()
 
@@ -40,6 +41,15 @@ async def create_evidence(
     db.add(evidence)
     await db.flush()
     await db.refresh(evidence)
+    try:
+        await sync_evidence_to_neo4j(
+            evidence.id,
+            evidence.requirement_id,
+            evidence.file_key,
+            evidence.filename,
+        )
+    except Exception:
+        pass
     return evidence
 
 
@@ -68,3 +78,7 @@ async def delete_evidence(
         raise HTTPException(status_code=404, detail="Evidence not found")
     await db.delete(obj)
     await db.flush()
+    try:
+        await delete_evidence_from_neo4j(evidence_id)
+    except Exception:
+        pass

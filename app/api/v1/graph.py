@@ -50,7 +50,12 @@ async def sync_graph_from_postgres(db: AsyncSession = Depends(get_db)) -> dict:
     try:
         await ensure_indexes()
         counts = await sync_all_frameworks_and_requirements(db)
-        return {"ok": True, "frameworks": counts["frameworks"], "requirements": counts["requirements"]}
+        return {
+            "ok": True,
+            "frameworks": counts["frameworks"],
+            "requirements": counts["requirements"],
+            "evidence": counts.get("evidence", 0),
+        }
     except Exception as e:
         raise HTTPException(
             status_code=500,
