@@ -863,8 +863,7 @@ export default function Assessments() {
                 <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
                   <h4 className="font-medium mb-1">2. Upload standard document</h4>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Upload the PDF or document for this framework so gap analysis has evidence to
-                    assess.
+                    Upload the PDF or document for this framework so requirements can be extracted.
                   </p>
                   <Button onClick={() => openUploadStandard()} disabled={frameworks.length === 0}>
                     <FileUp className="mr-2 h-4 w-4" />
@@ -872,10 +871,19 @@ export default function Assessments() {
                   </Button>
                 </div>
                 <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
-                  <h4 className="font-medium mb-1">3. Upload evidence</h4>
+                  <h4 className="font-medium mb-1">3. Add at least one requirement</h4>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Upload evidence for the selected framework (policies, procedures, or standard
-                    PDF) for gap analysis.
+                    Extract from the standard (after upload) or add manually.
+                  </p>
+                  <Button onClick={openAddRequirement} disabled={frameworks.length === 0}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Requirement
+                  </Button>
+                </div>
+                <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
+                  <h4 className="font-medium mb-1">4. Upload evidence & run gap analysis</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Upload evidence (policies, procedures) then run gap analysis.
                   </p>
                   <Button
                     variant="outline"
@@ -925,13 +933,13 @@ export default function Assessments() {
                   <FileUp className="mr-2 h-4 w-4" />
                   Upload Standard
                 </Button>
-                <Button onClick={() => openUploadEvidence()} variant="outline" size="sm">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Upload Evidence
-                </Button>
                 <Button onClick={openAddRequirement} variant="outline" size="sm">
                   <Plus className="mr-2 h-4 w-4" />
                   Add Requirement
+                </Button>
+                <Button onClick={() => openUploadEvidence()} variant="outline" size="sm">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Upload Evidence
                 </Button>
                 <Button onClick={() => openAddFramework()} size="sm">
                   <Plus className="mr-2 h-4 w-4" />
@@ -1030,15 +1038,6 @@ export default function Assessments() {
                         <FileUp className="mr-2 h-4 w-4" />
                         Upload
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openUploadEvidence(fw.id)}
-                        title={`Upload evidence document for ${fw.name}`}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Upload Evidence
-                      </Button>
                       {hasFwEvidence && (
                         <>
                           {(fw.framework_type || '').toUpperCase() === 'ISO' && (
@@ -1082,19 +1081,33 @@ export default function Assessments() {
                           </Button>
                         </>
                       )}
-                      <Button
-                        size="sm"
-                        onClick={() => handleRunGapAnalysis(fw.id)}
-                        disabled={runningFrameworkId !== null || !canRunGap}
-                        title={gapDisabledTitle}
-                      >
-                        {runningFrameworkId === fw.id ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Play className="mr-2 h-4 w-4" />
-                        )}
-                        Run Gap Analysis
-                      </Button>
+                      <div className="rounded-lg border-2 border-primary/40 bg-primary/5 p-2 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Evidence & Gap Analysis</p>
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openUploadEvidence(fw.id)}
+                            title={`Upload evidence document for ${fw.name}`}
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Upload Evidence
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleRunGapAnalysis(fw.id)}
+                            disabled={runningFrameworkId !== null || !canRunGap}
+                            title={gapDisabledTitle}
+                          >
+                            {runningFrameworkId === fw.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Play className="mr-2 h-4 w-4" />
+                            )}
+                            Run Gap Analysis
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                     {extractResult?.frameworkId === fw.id && (
                       <p className="mt-2 text-xs text-muted-foreground">{extractResult.message}</p>
