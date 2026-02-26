@@ -96,7 +96,7 @@ export default function Layout() {
                 alt="Marlowe"
                 className="h-9 w-9 rounded object-cover"
               />
-              {!isSidebarCollapsed && <span>Marlowe®</span>}
+              {!isSidebarCollapsed && <span>Marlowe</span>}
             </Link>
             <button
               type="button"
@@ -177,7 +177,7 @@ export default function Layout() {
             </Link>
             {!isSidebarCollapsed && (
               <p className="px-3 pt-2 text-xs text-muted-foreground/80">
-                Marlowe® is a registered trademark of GallowGlass AI.{' '}
+                Marlowe is a trademark of GallowGlass AI.{' '}
                 <Link to="/about-marlowe" className="underline hover:text-muted-foreground">
                   Who was Marlowe?
                 </Link>{' '}

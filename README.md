@@ -113,7 +113,7 @@ To verify from the API: `GET http://localhost:5010/api/v1/ollama/health` returns
 - `frontend-old/` – Legacy static HTML/CSS/JS (SB Admin 2 style), not used by default
 - `docs/` – Reference documents (ingestible into Qdrant)
 
-See `PRD.md` for full product and architecture details.
+See [PRD.md](PRD.md) for full product and architecture details. See [docs/DEVELOPERS.md](docs/DEVELOPERS.md) for the developer's guide.
 
 ## Licensed documents and Qdrant
 
@@ -122,3 +122,7 @@ Licensed or copyrighted documents (e.g. ISO standards) must **not** be committed
 - **Local use:** Create `docs/licensed/` (gitignored) and place your licensed PDFs there. Ingest from `docs` as usual.
 - **Public repo:** Only open-access content in `docs/` is committed.
 - **Clearing Qdrant:** Before sharing a deployment or backup, clear the vector store: `DELETE /api/v1/documents/collection` or `docker compose down -v` to reset volumes.
+
+## License
+
+Marlowe is released under the [Apache License 2.0](LICENSE). See [TRADEMARK](TRADEMARK) for use of the name.

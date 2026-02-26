@@ -43,7 +43,7 @@ export default function AboutMarlowe() {
       <div>
         <h1 className="text-4xl font-bold tracking-tight">Christopher Marlowe</h1>
         <p className="text-base text-muted-foreground mt-1">
-          Elizabethan playwright, poet, and namesake of Marlowe®
+          Elizabethan playwright, poet, and namesake of Marlowe
         </p>
       </div>
 
@@ -69,8 +69,8 @@ export default function AboutMarlowe() {
             as we navigate the risks and opportunities of artificial intelligence.
           </p>
           <p className="text-sm">
-            <span className="text-foreground font-medium">Marlowe®</span> — bridging 16th-century literary innovation
-            with 21st-century AI governance.
+            <span className="text-foreground font-medium">Marlowe</span> — bridging 16th-century literary innovation
+            with 21st-century AI governance. Marlowe is a trademark of GallowGlass AI.
           </p>
         </CardContent>
       </Card>

@@ -27,3 +27,5 @@ Licensed or copyrighted documents (e.g. ISO standards, paid frameworks) **must n
 ### Clearing Qdrant before sharing
 
 If you have ingested licensed content into Qdrant and plan to share a backup or deployment, clear the vector store first. See the [README](../README.md#licensed-documents-and-qdrant) for instructions.
+
+Marlowe is a trademark of GallowGlass AI.

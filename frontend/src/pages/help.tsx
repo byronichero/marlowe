@@ -109,7 +109,7 @@ export default function Help() {
             Trademark & License
           </CardTitle>
           <CardDescription>
-            Marlowe® is a registered trademark of GallowGlass AI
+            Marlowe is a trademark of GallowGlass AI
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
@@ -120,8 +120,8 @@ export default function Help() {
             different name.
           </p>
           <p>
-            See <code className="rounded bg-muted px-1">LICENSE-TODO.md</code> in the project repository for
-            detailed license and trademark planning information.
+            See <code className="rounded bg-muted px-1">LICENSE</code> and <code className="rounded bg-muted px-1">TRADEMARK</code> in the
+            project repository for license and trademark information.
           </p>
         </CardContent>
       </Card>
