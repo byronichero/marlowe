@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.database import async_session_factory, get_db
 from app.services.gap_analysis_service import run_gap_analysis_for_framework_with_progress
+from app.services.gap_report_service import create_gap_analysis_report
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,13 @@ async def _run_gap_analysis_job(job_id: str, framework_id: int) -> None:
             report = await run_gap_analysis_for_framework_with_progress(
                 db, framework_id, progress_callback=progress_callback
             )
+            if report.get("ok") and report.get("output"):
+                await create_gap_analysis_report(
+                    db,
+                    framework_id=framework_id,
+                    report_text=report.get("output", ""),
+                )
+                await db.commit()
         if report.get("ok"):
             _gap_analysis_jobs[job_id].update(
                 status="completed",

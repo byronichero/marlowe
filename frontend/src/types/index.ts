@@ -97,3 +97,37 @@ export interface GraphHealth {
   version: string
   timestamp: string
 }
+
+export interface ReportItem {
+  id: number
+  title: string
+  status: string
+  framework_id: number | null
+  framework_name: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string | null
+  requirement_count: number
+  evidence_count: number
+}
+
+export interface ReportsResponse {
+  reports: ReportItem[]
+  gap_reports: GapReportItem[]
+  filters: {
+    assessment_id: number | null
+    framework_id: number | null
+    from_date: string | null
+    to_date: string | null
+  }
+}
+
+export interface GapReportItem {
+  id: number
+  framework_id: number
+  framework_name: string | null
+  assessment_id: number | null
+  status: string
+  report_text: string
+  created_at: string | null
+}

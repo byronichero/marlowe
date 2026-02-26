@@ -30,7 +30,7 @@ This guide helps developers understand, extend, and contribute to Marlowe—an A
 | Cache | Redis | Sessions, caching (if used) |
 | AI | Ollama (on host) | Chat, embeddings, gap analysis agents |
 | Document Processing | Docling | PDF, DOCX, PPTX, XLSX → text extraction |
-| Object Storage | MinIO / S3 | Uploaded documents |
+| Object Storage | MinIO / S3 (on host) | Uploaded documents |
 | Frontend | React, Vite, TypeScript, Tailwind, Shadcn UI | Single-page app |
 | Chat UI | CopilotKit, LangGraph | AI agents with RAG |
 | Observability | OpenTelemetry, Prometheus, Tempo, Grafana | Traces, metrics |
@@ -215,7 +215,7 @@ Centralized `api` object with methods for all backend endpoints. Uses `fetch` wi
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama |
 | `OLLAMA_MODEL`, `OLLAMA_FALLBACK_MODEL` | qwen3, granite3.2 | Chat models |
 | `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` | nomic-embed-text, 768 | Embeddings |
-| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | … | MinIO |
+| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | host.docker.internal:9000 | MinIO (runs on host; no container in Compose) |
 | `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT` | … | OpenTelemetry |
 | `NIST_AUTO_SEED` | true | Auto-load NIST 800-53 on startup |
 
@@ -250,6 +250,8 @@ For production, set up observability as you wish: external Prometheus/Grafana, m
 
 ### Backend
 
+**Ollama and MinIO must run on the host** (not in Docker Compose). The backend reaches them via `host.docker.internal` when running in Docker, or `localhost` when the backend runs directly on the host. Document uploads require MinIO; without it, uploads will fail.
+
 ```bash
 # Venv
 uv venv && source .venv/bin/activate  # or Windows equivalent
@@ -257,6 +259,9 @@ uv sync
 
 # Run Postgres, Redis, Qdrant, Neo4j
 docker compose up -d postgres redis qdrant neo4j
+
+# Ensure Ollama and MinIO run on host (e.g. minio server, ollama serve)
+# Point .env: OLLAMA_HOST=http://localhost:11434, MINIO_ENDPOINT=localhost:9000
 
 # Start backend
 uvicorn app.main:app --reload

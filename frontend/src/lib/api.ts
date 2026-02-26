@@ -9,6 +9,7 @@ import type {
   GraphData,
   GraphHealth,
   GraphStats,
+  ReportsResponse,
 } from '@/types'
 
 const API_BASE = '/api/v1'
@@ -127,6 +128,22 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Reports
+  getReports: (filters?: {
+    assessment_id?: number
+    framework_id?: number
+    from_date?: string
+    to_date?: string
+  }) => {
+    const params = new URLSearchParams()
+    if (filters?.assessment_id != null) params.set('assessment_id', String(filters.assessment_id))
+    if (filters?.framework_id != null) params.set('framework_id', String(filters.framework_id))
+    if (filters?.from_date) params.set('from_date', filters.from_date)
+    if (filters?.to_date) params.set('to_date', filters.to_date)
+    const query = params.toString() ? `?${params}` : ''
+    return fetchAPI<ReportsResponse>(`reports${query}`)
+  },
 
   // Assessments
   getAssessments: (frameworkId?: number) => {

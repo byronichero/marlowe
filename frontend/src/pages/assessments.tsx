@@ -22,6 +22,7 @@ import {
   FileSearch,
   FileUp,
   FileText,
+  Lightbulb,
   Loader2,
   Play,
   Plus,
@@ -75,6 +76,23 @@ function slugify(value: string): string {
 }
 
 const LAST_GAP_ANALYSIS_KEY = 'lastGapAnalysisFrameworkId'
+
+const GAP_ANALYSIS_HINTS = [
+  'The Framework Analyst reviews each requirement before the Evidence Reviewer maps your docs to them.',
+  'Tip: Map controls to risk before running gap analysis for better alignment.',
+  'Evidence should link to specific requirements—the more precise, the stronger the assessment.',
+  'Gap analysis uses LangGraph agents: Framework Analyst → Evidence Reviewer → Gap Assessor.',
+  'Upload policies, procedures, and audit artifacts as evidence for more accurate gap findings.',
+  'NIST 800-53 and ISO 27001/42001 are common baselines—extract requirements first, then run analysis.',
+  'The Knowledge Graph shows frameworks, requirements, and evidence—try "View in Knowledge Graph" when done.',
+  'Partial compliance is valid—the Gap Assessor identifies PARTIAL, GAP, and COMPLIANT status.',
+  'Run gap analysis after adding requirements and uploading evidence for best results.',
+  'Download the report in MD format before closing—reports are not saved across sessions.',
+  'FedRAMP Low, Moderate, and High baselines filter NIST controls in the Knowledge Graph.',
+  'Crosswalk mappings use semantic similarity to align requirements across different standards.',
+  'Think of gap analysis as a three-step audit: understand requirements → map evidence → assess gaps.',
+  'Synthetic evidence scripts can generate demo data—check the Getting Started tutorial.',
+]
 
 export default function Assessments() {
   const { model } = useChatModel()
@@ -1697,16 +1715,28 @@ export default function Assessments() {
               </span>
             </div>
             {gapAnalysisJob && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{gapAnalysisJob.step}</span>
-                  <span className="font-medium">{gapAnalysisJob.percent}%</span>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{gapAnalysisJob.step}</span>
+                    <span className="font-medium">{gapAnalysisJob.percent}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted">
+                    <div
+                      className="h-2 rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${gapAnalysisJob.percent}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 w-full rounded-full bg-muted">
-                  <div
-                    className="h-2 rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${gapAnalysisJob.percent}%` }}
-                  />
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-start gap-3 text-sm">
+                  <Lightbulb className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+                  <p className="text-muted-foreground italic">
+                    {GAP_ANALYSIS_HINTS[
+                      gapAnalysisJob.job_id
+                        .split('')
+                        .reduce((a, c) => a + (c.codePointAt(0) ?? 0), 0) % GAP_ANALYSIS_HINTS.length
+                    ]}
+                  </p>
                 </div>
               </div>
             )}

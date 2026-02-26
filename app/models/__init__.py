@@ -6,6 +6,7 @@ from app.models.requirement import Requirement
 from app.models.organization import Organization
 from app.models.assessment import Assessment, RequirementAssessment
 from app.models.evidence import Evidence
+from app.models.gap_analysis_report import GapAnalysisReport
 from app.models.user import User
 from app.models.faq import FAQ
 
@@ -17,6 +18,7 @@ __all__ = [
     "Assessment",
     "RequirementAssessment",
     "Evidence",
+    "GapAnalysisReport",
     "User",
     "FAQ",
 ]
