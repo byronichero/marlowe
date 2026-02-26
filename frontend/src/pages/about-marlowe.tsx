@@ -6,12 +6,12 @@ const plays = [
   {
     title: 'Doctor Faustus',
     subtitle: 'The Tragical History of Doctor Faustus',
-    url: '/api/v1/documents/download?path=dr-faustus/pg811-images.html',
+    url: '/api/v1/documents/preview?path=dr-faustus/pg811-images.html',
     description: 'The scholar who sells his soul to the devil—a tale of ambition, knowledge, and damnation.',
   },
   {
     title: 'The Jew of Malta',
-    url: '/api/v1/documents/download?path=jew-of-malta/pg901-images.html',
+    url: '/api/v1/documents/preview?path=jew-of-malta/pg901-images.html',
     description: 'Barabas and the fraught politics of Malta—revenge, intrigue, and moral complexity.',
   },
   {
