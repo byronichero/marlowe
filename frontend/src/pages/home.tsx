@@ -85,9 +85,10 @@ export default function Home() {
       </div>
 
       {/* Right sidebar: stats, model, quick actions, about */}
-      <aside className="flex w-full flex-shrink-0 flex-col gap-4 lg:w-72">
+      <aside className="flex w-full flex-shrink-0 flex-col gap-4 lg:w-72 lg:pt-[52px]">
         {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border/60 bg-card/50 p-2">
+          <div className="grid grid-cols-2 gap-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
               <CardTitle className="text-xs font-medium">API</CardTitle>
@@ -140,6 +141,7 @@ export default function Home() {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* Model selector */}
