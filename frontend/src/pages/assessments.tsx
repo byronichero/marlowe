@@ -164,6 +164,9 @@ export default function Assessments() {
   const [extractScope, setExtractScope] = useState<Record<number, string>>({})
   const [loadingNistSeed, setLoadingNistSeed] = useState(false)
   const [nistSeedReplaceConfirm, setNistSeedReplaceConfirm] = useState(false)
+  const [loadingTaxonomySeed, setLoadingTaxonomySeed] = useState(false)
+  const [taxonomySeedReplaceConfirm, setTaxonomySeedReplaceConfirm] = useState(false)
+  const [taxonomySeedMessage, setTaxonomySeedMessage] = useState<string | null>(null)
 
   const hasFramework = frameworks.length > 0
   const hasRequirement = requirements.length >= 1
@@ -173,6 +176,11 @@ export default function Assessments() {
   const hasIso = frameworks.some((f) => f.slug?.includes('42001') || f.name?.includes('42001'))
   const hasNist = frameworks.some(
     (f) => f.slug?.includes('nist-800-53') || f.name?.toLowerCase().includes('nist 800-53')
+  )
+  const hasTaxonomy = frameworks.some(
+    (f) =>
+      f.slug === 'nist-ai-rmf-trustworthiness-taxonomy' ||
+      f.name?.toLowerCase().includes('trustworthiness taxonomy')
   )
 
   function refreshFrameworks() {
@@ -212,6 +220,38 @@ export default function Assessments() {
       setTimeout(() => setExtractResult(null), 6000)
     } finally {
       setLoadingNistSeed(false)
+    }
+  }
+
+  async function handleLoadTrustworthinessTaxonomy(replace = false, mvpOnly = false) {
+    setLoadingTaxonomySeed(true)
+    setTaxonomySeedReplaceConfirm(false)
+    setTaxonomySeedMessage(null)
+    try {
+      const result = await api.seedNistAiRmfTaxonomy(replace, mvpOnly)
+      if (result.ok) {
+        refreshFrameworks()
+        refreshRequirements()
+        setTaxonomySeedMessage(
+          `NIST AI RMF Trustworthiness Taxonomy loaded: ${result.properties_created} properties.`
+        )
+        setTimeout(() => setTaxonomySeedMessage(null), 8000)
+      } else if (result.error) {
+        setTaxonomySeedMessage(result.error)
+        if (result.error.includes('already exists')) {
+          setTaxonomySeedReplaceConfirm(true)
+        }
+        setTimeout(() => setTaxonomySeedMessage(null), 6000)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load taxonomy'
+      setTaxonomySeedMessage(msg)
+      if (msg.includes('409') || msg.includes('already exists')) {
+        setTaxonomySeedReplaceConfirm(true)
+      }
+      setTimeout(() => setTaxonomySeedMessage(null), 6000)
+    } finally {
+      setLoadingTaxonomySeed(false)
     }
   }
 
@@ -704,6 +744,128 @@ export default function Assessments() {
         </p>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              ISO/IEC 42001
+            </CardTitle>
+            <CardDescription>
+              Add the ISO 42001 template, then upload the standard to extract requirements.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => openAddFramework('ISO')}
+              variant={hasIso ? 'outline' : 'default'}
+              size="sm"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {hasIso ? 'ISO 42001 (added)' : 'Add ISO 42001'}
+            </Button>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              NIST 800-53
+            </CardTitle>
+            <CardDescription>
+              Load the official catalog (1,189 controls). No document upload required.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button
+              onClick={() => {
+                if (!hasNist) {
+                  handleLoadNist80053(nistSeedReplaceConfirm)
+                }
+              }}
+              variant={hasNist ? 'outline' : 'default'}
+              size="sm"
+              disabled={loadingNistSeed || (hasNist && !nistSeedReplaceConfirm)}
+            >
+              {loadingNistSeed ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading…
+                </>
+              ) : hasNist ? (
+                'NIST 800-53 (loaded)'
+              ) : (
+                <>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Load NIST 800-53
+                </>
+              )}
+            </Button>
+            {nistSeedReplaceConfirm && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleLoadNist80053(true)}
+                disabled={loadingNistSeed}
+              >
+                Replace existing
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              NIST AI RMF Taxonomy
+            </CardTitle>
+            <CardDescription>
+              Outcome-based trustworthiness properties aligned to the AI RMF lifecycle (150 core
+              properties; Appendix tables are excluded).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button
+              onClick={() => {
+                if (!hasTaxonomy) {
+                  handleLoadTrustworthinessTaxonomy(taxonomySeedReplaceConfirm, false)
+                }
+              }}
+              variant={hasTaxonomy ? 'outline' : 'default'}
+              size="sm"
+              disabled={loadingTaxonomySeed || (hasTaxonomy && !taxonomySeedReplaceConfirm)}
+            >
+              {loadingTaxonomySeed ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading…
+                </>
+              ) : hasTaxonomy ? (
+                'Taxonomy (loaded)'
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Load Taxonomy
+                </>
+              )}
+            </Button>
+            {taxonomySeedReplaceConfirm && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleLoadTrustworthinessTaxonomy(true, false)}
+                disabled={loadingTaxonomySeed}
+              >
+                Replace existing
+              </Button>
+            )}
+            {taxonomySeedMessage && (
+              <p className="text-xs text-muted-foreground">{taxonomySeedMessage}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {showUploadBanner && uploadProgress && (
         <Card className="border-primary/40 bg-primary/5">
           <CardHeader className="py-4">
@@ -828,11 +990,11 @@ export default function Assessments() {
           <CardContent className="flex flex-col sm:flex-row flex-wrap gap-4">
             <div className="flex-1 min-w-[200px] rounded-lg border p-4 bg-background">
               <h4 className="font-medium mb-1">
-                {!hasFramework ? '1. ' : ''}Add framework (ISO or NIST)
+                {!hasFramework ? '1. ' : ''}Add a framework (ISO, NIST, or AI RMF taxonomy)
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
                 ISO 42001 and NIST are recommended baselines. NIST 800-53 is free—load the official
-                catalog (1,189 controls) with one click. ISO requires your own document.
+                catalog (1,189 controls) with one click. AI RMF taxonomy is outcome-based.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -875,6 +1037,40 @@ export default function Assessments() {
                     disabled={loadingNistSeed}
                   >
                     Replace existing
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    if (!hasTaxonomy) {
+                      handleLoadTrustworthinessTaxonomy(taxonomySeedReplaceConfirm, false)
+                    }
+                  }}
+                  variant={hasTaxonomy ? 'outline' : 'default'}
+                  size="sm"
+                  disabled={loadingTaxonomySeed || (hasTaxonomy && !taxonomySeedReplaceConfirm)}
+                >
+                  {loadingTaxonomySeed ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading…
+                    </>
+                  ) : hasTaxonomy ? (
+                    'AI RMF Taxonomy (loaded)'
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Load AI RMF Taxonomy
+                    </>
+                  )}
+                </Button>
+                {taxonomySeedReplaceConfirm && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleLoadTrustworthinessTaxonomy(true, false)}
+                    disabled={loadingTaxonomySeed}
+                  >
+                    Replace taxonomy
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={() => openAddFramework()}>
@@ -979,6 +1175,21 @@ export default function Assessments() {
                   title="NIST baseline required: 800-53"
                 >
                   NIST baseline
+                </Button>
+                <span>•</span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto px-0"
+                  onClick={() => {
+                    if (!hasTaxonomy) {
+                      handleLoadTrustworthinessTaxonomy(taxonomySeedReplaceConfirm, false)
+                    }
+                  }}
+                  title="NIST AI RMF Trustworthiness Taxonomy"
+                >
+                  AI RMF taxonomy
                 </Button>
               </div>
             </div>

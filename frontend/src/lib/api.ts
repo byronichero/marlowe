@@ -185,6 +185,12 @@ export const api = {
       `nist/seed?replace_existing=${replace ?? false}`,
       { method: 'POST' }
     ),
+  // NIST AI RMF Trustworthiness Taxonomy seed (docs/taxonomy-ai.md)
+  seedNistAiRmfTaxonomy: (replace?: boolean, mvpOnly?: boolean) =>
+    fetchAPI<{ ok: boolean; framework_id: number; properties_created: number; error?: string }>(
+      `nist/taxonomy/seed?replace_existing=${replace ?? false}&mvp_only=${mvpOnly ?? false}`,
+      { method: 'POST' }
+    ),
 
   // Knowledge graph (optional signal for abort/cancel)
   getGraph: (frameworkId?: number, fedrampBaseline?: string, signal?: AbortSignal) => {
