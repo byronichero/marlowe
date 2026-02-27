@@ -2,7 +2,13 @@
 
 from app.schemas.framework import FrameworkCreate, FrameworkRead, FrameworkUpdate
 from app.schemas.requirement import RequirementCreate, RequirementRead, RequirementUpdate
-from app.schemas.assessment import AssessmentCreate, AssessmentRead, RequirementAssessmentRead
+from app.schemas.assessment import (
+    AssessmentCreate,
+    AssessmentRead,
+    RequirementAssessmentRead,
+    RequirementAssessmentUpdate,
+    RequirementAssessmentItem,
+)
 from app.schemas.evidence import EvidenceCreate, EvidenceRead
 from app.schemas.organization import OrganizationCreate, OrganizationRead
 from app.schemas.faq import FAQCreate, FAQRead
@@ -19,6 +25,8 @@ __all__ = [
     "AssessmentCreate",
     "AssessmentRead",
     "RequirementAssessmentRead",
+    "RequirementAssessmentUpdate",
+    "RequirementAssessmentItem",
     "EvidenceCreate",
     "EvidenceRead",
     "OrganizationCreate",

@@ -47,6 +47,18 @@ export interface Assessment {
   updated_at: string
 }
 
+export interface RequirementAssessmentItem {
+  assessment_id: number
+  requirement_id: number
+  identifier: string
+  title: string
+  description?: string
+  level?: string
+  family?: string
+  status: string
+  notes?: string | null
+}
+
 export interface GapAnalysisReport {
   ok: boolean
   framework_id: number

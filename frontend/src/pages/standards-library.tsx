@@ -208,12 +208,21 @@ export default function StandardsLibrary() {
                         </td>
                         <td className="p-3">
                           <div className="flex justify-end gap-2">
-                            <Link to="/assessments">
-                              <Button variant="ghost" size="sm" className="h-8">
-                                <ClipboardCheck className="mr-1 h-3.5 w-3.5" />
-                                Assess
-                              </Button>
-                            </Link>
+                            {item.slug === 'nist-ai-rmf-trustworthiness-taxonomy' ? (
+                              <Link to={`/taxonomy-assessment/${item.id}`}>
+                                <Button variant="ghost" size="sm" className="h-8">
+                                  <ClipboardCheck className="mr-1 h-3.5 w-3.5" />
+                                  Assess
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Link to="/assessments">
+                                <Button variant="ghost" size="sm" className="h-8">
+                                  <ClipboardCheck className="mr-1 h-3.5 w-3.5" />
+                                  Assess
+                                </Button>
+                              </Link>
+                            )}
                             <Link to={`/knowledge-graph?framework_id=${item.id}`}>
                               <Button variant="ghost" size="sm" className="h-8">
                                 <Network className="mr-1 h-3.5 w-3.5" />

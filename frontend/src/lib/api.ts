@@ -4,6 +4,7 @@ import type {
   FrameworkLibraryItem,
   Requirement,
   Assessment,
+  RequirementAssessmentItem,
   ChatMessage,
   ChatResponse,
   GraphData,
@@ -151,6 +152,36 @@ export const api = {
     return fetchAPI<Assessment[]>(`assessments${params}`)
   },
   getAssessment: (id: number) => fetchAPI<Assessment>(`assessments/${id}`),
+  createAssessment: (payload: {
+    title: string
+    status?: string
+    framework_id?: number | null
+    organization_id?: number | null
+    started_at?: string | null
+    completed_at?: string | null
+  }) =>
+    fetchAPI<Assessment>('assessments', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  initAssessmentRequirements: (assessmentId: number) =>
+    fetchAPI<{ ok: boolean; created: number }>(`assessments/${assessmentId}/requirements/init`, {
+      method: 'POST',
+    }),
+  getAssessmentRequirements: (assessmentId: number) =>
+    fetchAPI<RequirementAssessmentItem[]>(`assessments/${assessmentId}/requirements`),
+  updateAssessmentRequirement: (
+    assessmentId: number,
+    requirementId: number,
+    payload: { status?: string; notes?: string | null }
+  ) =>
+    fetchAPI<RequirementAssessmentItem>(
+      `assessments/${assessmentId}/requirements/${requirementId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }
+    ),
 
   // Gap analysis (background job)
   startGapAnalysis: (frameworkId: number) =>

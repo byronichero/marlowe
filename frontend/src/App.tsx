@@ -6,6 +6,7 @@ import Assessments from './pages/assessments'
 import KnowledgeGraph from './pages/knowledge-graph'
 import Reports from './pages/reports'
 import StandardsLibrary from './pages/standards-library'
+import TaxonomyAssessment from './pages/taxonomy-assessment'
 import Faq from './pages/faq'
 import Help from './pages/help'
 import Tutorial from './pages/tutorial'
@@ -20,6 +21,7 @@ function App() {
         <Route index element={<Home />} />
         <Route path="knowledge-base" element={<KnowledgeBase />} />
         <Route path="assessments" element={<Assessments />} />
+        <Route path="taxonomy-assessment/:frameworkId" element={<TaxonomyAssessment />} />
         <Route path="standards-library" element={<StandardsLibrary />} />
         <Route path="knowledge-graph" element={<KnowledgeGraph />} />
         <Route path="reports" element={<Reports />} />
