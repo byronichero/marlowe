@@ -41,9 +41,9 @@ const navigationSections = [
     ],
   },
   {
-    label: 'Compliance',
+    label: 'GRC',
     items: [
-      { name: 'Compliance & Gap Analysis', href: '/assessments', icon: ClipboardCheck },
+      { name: 'GRC & Gap Analysis', href: '/assessments', icon: ClipboardCheck },
       { name: 'Reports', href: '/reports', icon: FileText },
     ],
   },

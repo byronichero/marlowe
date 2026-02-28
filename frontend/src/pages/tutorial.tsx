@@ -98,7 +98,7 @@ export default function Tutorial() {
             Gap Analysis in 5 Steps
           </CardTitle>
           <CardDescription>
-            Follow this workflow on the Compliance & Gap Analysis page. Each step has a button or
+            Follow this workflow on the GRC & Gap Analysis page. Each step has a button or
             dialog.
           </CardDescription>
         </CardHeader>

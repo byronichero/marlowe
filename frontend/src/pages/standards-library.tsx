@@ -245,7 +245,7 @@ export default function StandardsLibrary() {
         <Link to="/assessments" className="inline-flex">
           <Button variant="outline" className="flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4" />
-            Compliance & Gap Analysis
+            GRC & Gap Analysis
             <ExternalLink className="h-3 w-3" />
           </Button>
         </Link>
