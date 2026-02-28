@@ -20,12 +20,12 @@ const faqs = [
   {
     question: 'How does the AI chat work?',
     answer:
-      'The chat uses Ollama models with RAG (Retrieval Augmented Generation) to answer questions using your uploaded documents as context.',
+      'The chat uses local LLMs (Ollama by default, optional vLLM) with RAG (Retrieval Augmented Generation) to answer questions using your uploaded documents as context.',
   },
   {
     question: 'Is my data secure?',
     answer:
-      'All data is stored locally in Docker containers. No data is sent to external services except for the self-hosted Ollama instance.',
+      'All data is stored locally in Docker containers. No data is sent to external services except for your self-hosted LLM provider.',
   },
 ]
 

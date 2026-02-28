@@ -1,10 +1,10 @@
-"""AI chat service – Ollama with optional Qdrant document context."""
+"""AI chat service – LLM provider with optional Qdrant document context."""
 
 import logging
 
 from app.core.config import settings
 from app.services.graph_service import get_framework_names, get_graph_health, get_graph_stats
-from app.services.ollama_service import ollama_chat, ollama_embeddings
+from app.services.llm_service import llm_chat, llm_embeddings
 from app.services.qdrant_service import ensure_collection, get_recent_documents, list_document_sources, search
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ async def build_rag_prompt(
                 "the lists and excerpts in the conversation are that access."
             )
             user_content = f"{doc_list_str}Question: {message}"
-        query_vector = await ollama_embeddings(message, model=settings.embedding_model)
+        query_vector = await llm_embeddings(message, model=settings.embedding_model)
         if query_vector:
             results = search(
                 settings.qdrant_collection,
@@ -130,6 +130,5 @@ async def chat_with_context(
         system_prompt, user_content = await build_rag_prompt(message, context_document_ids)
     else:
         system_prompt, user_content = None, message
-    used_model = model or settings.ollama_model
-    reply = await ollama_chat(user_content, model=used_model, system=system_prompt)
+    reply, used_model = await llm_chat(user_content, model=model, system=system_prompt)
     return reply, used_model

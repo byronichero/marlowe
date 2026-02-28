@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:latest"
     ollama_fallback_model: str = "granite3.2:latest"  # used if requested model returns 404 (not pulled)
     ollama_api_timeout: int = 600  # seconds; long prompts/RAG can be slow
+    # LLM provider (ollama|vllm)
+    llm_provider: str = "ollama"
+    # vLLM (OpenAI-compatible API)
+    vllm_base_url: str = "http://vllm:8000"
+    vllm_api_key: str | None = None
+    vllm_model: str = "meta-llama/Meta-Llama-3-8B-Instruct"
+    vllm_embeddings_model: str | None = None
+    vllm_api_timeout: int = 600
 
     # MinIO / S3-compatible
     minio_endpoint: str = "host.docker.internal:9000"

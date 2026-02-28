@@ -28,7 +28,7 @@ This guide helps developers understand, extend, and contribute to Marlowe—an A
 | Vector Store | Qdrant | Document embeddings, semantic search for RAG |
 | Graph | Neo4j | Knowledge graph (frameworks, requirements, evidence relationships) |
 | Cache | Redis | Sessions, caching (if used) |
-| AI | Ollama (on host) | Chat, embeddings, gap analysis agents |
+| AI | Ollama (default) or vLLM | Chat, embeddings, gap analysis agents |
 | Document Processing | Docling | PDF, DOCX, PPTX, XLSX → text extraction |
 | Object Storage | MinIO / S3 (on host) | Uploaded documents |
 | Frontend | React, Vite, TypeScript, Tailwind, Shadcn UI | Single-page app |
@@ -38,7 +38,7 @@ This guide helps developers understand, extend, and contribute to Marlowe—an A
 ### Data Flow (High Level)
 
 ```
-User → Frontend (React) → Backend (FastAPI) → [Postgres | Qdrant | Neo4j | Ollama | MinIO]
+User → Frontend (React) → Backend (FastAPI) → [Postgres | Qdrant | Neo4j | LLM (Ollama/vLLM) | MinIO]
 ```
 
 - **Postgres**: Source of truth for frameworks, requirements, assessments, evidence.
@@ -93,7 +93,8 @@ marlowe/
 | `/chat` | chat | Legacy chat endpoint |
 | `/reports` | reports | Gap analysis reports |
 | `/graph` | graph | Knowledge graph, stats, health, sync, crosswalk |
-| `/ollama` | ollama | Model list, health |
+| `/ollama` | ollama | Ollama model list, health |
+| `/llm` | llm | Provider-agnostic model list, health |
 | `/faq` | faq | FAQ CRUD |
 | `/gap-analysis` | gap_analysis | Run gap analysis (async job), poll status |
 | `/voice` | voice | Speech-to-text (Whisper) |
@@ -112,6 +113,8 @@ marlowe/
 | `document_service` | Docling parsing, text extraction |
 | `qdrant_service` | Qdrant client, search, ensure collection |
 | `ollama_service` | Chat, embeddings via Ollama |
+| `vllm_service` | Chat, embeddings via vLLM (OpenAI-compatible) |
+| `llm_service` | Provider switch for chat + embeddings |
 | `minio_client` | S3-compatible uploads |
 | `nist_seed_service` | Load NIST 800-53 from OSCAL |
 | `requirement_extraction_service` | AI extraction of requirements from documents |
@@ -123,8 +126,8 @@ marlowe/
 | Agent | File | Description |
 |-------|------|-------------|
 | Gap Analysis | `gap_analysis_graph.py` | LangGraph: Framework Analyst → Evidence Reviewer → Gap Assessor |
-| RAG Chat (Marlowe) | `rag_agent.py` | LangGraph: RAG node (build prompt, invoke ChatOllama) |
-| Free Chat | `rag_agent.py` | LangGraph: plain ChatOllama, no RAG |
+| RAG Chat (Marlowe) | `rag_agent.py` | LangGraph: RAG node (build prompt, invoke LLM provider) |
+| Free Chat | `rag_agent.py` | LangGraph: plain LLM provider, no RAG |
 
 ### Models (`app/models/`)
 
@@ -212,8 +215,15 @@ Centralized `api` object with methods for all backend endpoints. Uses `fetch` wi
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis |
 | `QDRANT_HOST`, `QDRANT_PORT` | localhost:6333 | Qdrant |
 | `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` | … | Neo4j |
+| `LLM_PROVIDER` | `ollama` | LLM provider: `ollama` or `vllm` |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama |
 | `OLLAMA_MODEL`, `OLLAMA_FALLBACK_MODEL` | qwen3, granite3.2 | Chat models |
+| `VLLM_BASE_URL` | `http://vllm:8000` | vLLM base URL |
+| `VLLM_MODEL` | meta-llama/Meta-Llama-3-8B-Instruct | vLLM chat model |
+| `VLLM_EMBEDDINGS_MODEL` | (optional) | vLLM embeddings model |
+
+**Note:** vLLM support is optional and untested in Marlowe. Security, compliance, and
+deployment validation are the responsibility of the end user.
 | `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` | nomic-embed-text, 768 | Embeddings |
 | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | host.docker.internal:9000 | MinIO (runs on host; no container in Compose) |
 | `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT` | … | OpenTelemetry |
@@ -250,7 +260,7 @@ For production, set up observability as you wish: external Prometheus/Grafana, m
 
 ### Backend
 
-**Ollama and MinIO must run on the host** (not in Docker Compose). The backend reaches them via `host.docker.internal` when running in Docker, or `localhost` when the backend runs directly on the host. Document uploads require MinIO; without it, uploads will fail.
+**Ollama (default) or vLLM, plus MinIO, must run on the host or in Compose**. The backend reaches host services via `host.docker.internal` when running in Docker, or `localhost` when the backend runs directly on the host. Document uploads require MinIO; without it, uploads will fail.
 
 ```bash
 # Venv
@@ -259,6 +269,9 @@ uv sync
 
 # Run Postgres, Redis, Qdrant, Neo4j
 docker compose up -d postgres redis qdrant neo4j
+
+# Optional: run vLLM (OpenAI-compatible) via profile
+docker compose --profile vllm up -d vllm
 
 # Ensure Ollama and MinIO run on host (e.g. minio server, ollama serve)
 # Point .env: OLLAMA_HOST=http://localhost:11434, MINIO_ENDPOINT=localhost:9000

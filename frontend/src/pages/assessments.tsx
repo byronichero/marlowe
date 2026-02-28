@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -743,6 +743,20 @@ export default function Assessments() {
           cybersecurity audit
         </p>
       </div>
+
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle>AI Readiness Check</CardTitle>
+          <CardDescription>
+            Standalone checklist with scoring to capture readiness before full governance work.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link to="/ai-readiness">
+            <Button>Open AI Readiness Check</Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="border-primary/20">

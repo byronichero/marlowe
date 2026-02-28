@@ -207,8 +207,8 @@ export const api = {
       body: JSON.stringify(message),
     }),
 
-  // Ollama models
-  getModels: () => fetchAPI<string[]>('ollama/models'),
+  // LLM models
+  getModels: () => fetchAPI<string[]>('llm/models'),
 
   // NIST 800-53 seed (official catalog, no upload needed)
   seedNist80053: (replace?: boolean) =>

@@ -12,15 +12,15 @@ The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Chris
 - **Cache:** Redis
 - **Graph:** Neo4j (knowledge graph)
 - **Document processing:** Docling only (PDF, DOCX, PPTX, XLSX, etc.)
-- **AI:** Ollama (on host)
+- **AI:** Ollama (default) or vLLM (OpenAI-compatible)
 - **Object storage:** MinIO or S3-compatible (on host)
 - **Frontend:** React (Vite, TypeScript, Tailwind CSS, CopilotKit, vis-network). Preferred stack: React + Vite + Tailwind + Shadcn UI. Legacy static HTML (SB Admin 2 style) lives in `frontend-old/` and is not the default UI.
 - **Deployment:** Docker Compose
 
 ## Quick start (Docker)
 
-1. Copy `.env.example` to `.env` and set values (DB, Redis, Qdrant, Neo4j, Ollama, MinIO).
-2. Ensure Ollama and MinIO run on the host if not in Compose.
+1. Copy `.env.example` to `.env` and set values (DB, Redis, Qdrant, Neo4j, LLM, MinIO).
+2. Ensure Ollama or vLLM and MinIO run on the host or in Compose, depending on your setup.
 3. From project root:
 
    ```bash
@@ -48,6 +48,7 @@ The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Chris
    | 5014 | Qdrant     |
    | 5015 | Neo4j HTTP |
    | 5016 | Neo4j Bolt |
+   | 5023 | vLLM (optional, profile `vllm`) |
 
 ## Local development (backend only)
 
@@ -60,7 +61,10 @@ The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Chris
 
 The `docs/` folder (PDFs, DOCX, .md, etc.) can be ingested into Qdrant so **AI Chat** and search use them as context. Via the UI (AI Knowledge Base → Upload), single-file uploads are limited to **100 MB** (nginx `client_max_body_size`); increase in `docker/nginx.conf` if needed.
 
-1. **Ollama**: Pull the embedding model (required for ingestion and RAG):
+1. **Embeddings**: Pull or configure an embedding model (required for ingestion and RAG).
+   - Ollama default: `ollama pull nomic-embed-text`
+   - vLLM: set `VLLM_EMBEDDINGS_MODEL` to a supported embedding model
+   
    ```bash
    ollama pull nomic-embed-text
    ```
@@ -89,7 +93,11 @@ Catalog is fetched from [NIST OSCAL GitHub](https://github.com/usnistgov/oscal-c
 
 Frameworks and requirements are synced from Postgres to Neo4j when you create or update them via the API. For existing data, use **Sync from DB** on the Knowledge Graph page, or `POST /api/v1/graph/sync`. The graph UI (vis-network) shows frameworks and requirements and **BELONGS_TO** edges; pan and zoom to explore.
 
-## Ollama (on host)
+## LLM provider (Ollama or vLLM)
+
+Marlowe supports **Ollama (default)** or **vLLM**. Configure with `LLM_PROVIDER=ollama|vllm` in `.env`.
+
+### Ollama (on host)
 
 The backend in Docker reaches Ollama at `host.docker.internal:11434`. **On Linux, Ollama must listen on all interfaces** so the container can connect: start it with `OLLAMA_HOST=0.0.0.0` (e.g. `OLLAMA_HOST=0.0.0.0 ollama serve`). If you use systemd:
 
@@ -99,11 +107,26 @@ printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0"\n' | sudo tee /etc/systemd/
 sudo systemctl daemon-reload && sudo systemctl restart ollama
 ```
 
-To verify from the API: `GET http://localhost:5010/api/v1/ollama/health` returns `{"reachable": true}` when Ollama is reachable.
+To verify from the API: `GET http://localhost:5010/api/v1/llm/health` returns `{"provider": "ollama", "reachable": true}` when Ollama is reachable.
 
-## Ollama model picker
+### vLLM (OpenAI-compatible)
 
-**Chat** lets users choose an Ollama model from a dropdown. The list is loaded from `GET /api/v1/ollama/models` (Ollama’s `/api/tags`). Send the selected model in the chat request body as `model`; the reply includes `model_used`.
+vLLM support is **optional and untested** in Marlowe. Enable and validate it only if you
+accept the security and operational implications. Configuration and deployment are left
+to the end user.
+
+Run vLLM in Docker or on the host and set:
+
+```
+LLM_PROVIDER=vllm
+VLLM_BASE_URL=http://vllm:8000
+VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
+VLLM_EMBEDDINGS_MODEL=<embedding-model-id>   # optional but recommended for RAG
+```
+
+### LLM model picker
+
+**Chat** lets users choose a model from a dropdown. The list is loaded from `GET /api/v1/llm/models`. Send the selected model in the chat request body as `model`; the reply includes `model_used`.
 
 ## Project structure
 

@@ -1,4 +1,4 @@
-"""AI chat API – Ollama with optional context."""
+"""AI chat API – configured LLM with optional context."""
 
 from fastapi import APIRouter
 
@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.post("", response_model=ChatResponse)
 async def chat(payload: ChatRequest) -> ChatResponse:
-    """Send a message to the AI (Ollama); optional document context and model selection."""
+    """Send a message to the AI; optional document context and model selection."""
     reply, model_used = await chat_with_context(
         payload.message,
         context_document_ids=payload.context_document_ids or None,

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.gap_analysis_graph import run_gap_analysis, run_gap_analysis_with_progress
 from app.core.config import settings
 from app.models import Framework, Requirement
-from app.services.ollama_service import ollama_embeddings
+from app.services.llm_service import llm_embeddings
 from app.services.qdrant_service import ensure_collection, search
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ async def get_evidence_context(query: str, framework_id: int | None = None) -> s
     """
     try:
         ensure_collection()
-        query_vector = await ollama_embeddings(query, model=settings.embedding_model)
+        query_vector = await llm_embeddings(query, model=settings.embedding_model)
         if not query_vector:
             return ""
         results = search(

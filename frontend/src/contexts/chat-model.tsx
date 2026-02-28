@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useMemo, type ReactNode } from 'react'
 
-const DEFAULT_MODEL = 'qwen3:latest'
+const DEFAULT_MODEL = ''
 
 interface ChatModelContextValue {
   model: string

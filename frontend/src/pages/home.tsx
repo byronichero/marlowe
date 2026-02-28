@@ -156,9 +156,9 @@ export default function Home() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
             >
-              {['qwen3:latest', ...models.filter((m) => m !== 'qwen3:latest')].map((m) => (
-                <option key={m} value={m}>
-                  {m === 'qwen3:latest' ? `${m} (default)` : m}
+              {['', ...models.filter((m) => m !== '')].map((m) => (
+                <option key={m || 'default'} value={m}>
+                  {m || 'Server default'}
                 </option>
               ))}
             </select>

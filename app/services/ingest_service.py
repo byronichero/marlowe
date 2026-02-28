@@ -1,4 +1,4 @@
-"""Ingest documents from a folder into Qdrant: extract text (Docling), chunk, embed (Ollama), upsert."""
+"""Ingest documents from a folder into Qdrant: extract text (Docling), chunk, embed (LLM), upsert."""
 
 import io
 import logging
@@ -9,7 +9,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.services.document_service import extract_text_from_file
-from app.services.ollama_service import ollama_embeddings
+from app.services.llm_service import llm_embeddings
 from app.services.qdrant_service import ensure_collection, get_qdrant_client, upsert_points
 from qdrant_client.models import PointStruct
 
@@ -86,7 +86,7 @@ async def _embed_chunks(chunks: list[str]) -> list[list[float]]:
     vectors = []
     for chunk in chunks:
         try:
-            vec = await ollama_embeddings(chunk, model=settings.embedding_model)
+            vec = await llm_embeddings(chunk, model=settings.embedding_model)
             vectors.append(vec)
         except Exception as e:
             logger.warning("Embedding failed for chunk (len=%s): %s", len(chunk), e)

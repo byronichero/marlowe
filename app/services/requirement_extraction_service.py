@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models import Requirement
 from app.services.graph_sync import sync_requirement_to_neo4j
-from app.services.ollama_service import ollama_chat
+from app.services.llm_service import llm_chat
 from app.services.qdrant_service import get_chunks_for_framework
 
 logger = logging.getLogger(__name__)
@@ -483,7 +483,7 @@ async def _extract_from_chunk_llm(
     hint = "ISO Annex A only. " if ("ISO" in fw and extraction_scope == "annex_a_only") else ""
     hint += "Extract from this section:"
     prompt = f"{hint}\n\n{chunk_text}"
-    reply = await ollama_chat(message=prompt, model=model, system=system)
+    reply, _ = await llm_chat(message=prompt, model=model, system=system)
     if not reply or not reply.strip():
         return []
     return _parse_llm_response(reply)

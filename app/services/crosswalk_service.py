@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import Framework, Requirement
-from app.services.ollama_service import ollama_embeddings
+from app.services.llm_service import llm_embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -80,14 +80,14 @@ async def generate_crosswalk(
     vecs_a: list[list[float]] = []
     for r in list_a:
         text = _req_text(r)
-        vec = await ollama_embeddings(text, model=model)
+        vec = await llm_embeddings(text, model=model)
         dim = getattr(settings, "embedding_dimension", 768)
         vecs_a.append(vec if vec else [0.0] * dim)
 
     vecs_b: list[list[float]] = []
     for r in list_b:
         text = _req_text(r)
-        vec = await ollama_embeddings(text, model=model)
+        vec = await llm_embeddings(text, model=model)
         dim = getattr(settings, "embedding_dimension", 768)
         vecs_b.append(vec if vec else [0.0] * dim)
 

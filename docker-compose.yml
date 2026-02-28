@@ -68,6 +68,18 @@ services:
     depends_on:
       - backend
 
+  # Optional vLLM service (OpenAI-compatible). Enable with: docker compose --profile vllm up -d
+  vllm:
+    image: vllm/vllm-openai:latest
+    profiles: ["vllm"]
+    ports:
+      - "5023:8000"
+    environment:
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - vllm_cache:/root/.cache/huggingface
+    command: ["--model", "${VLLM_MODEL:-meta-llama/Meta-Llama-3-8B-Instruct}"]
+
   postgres:
     image: postgres:15-alpine
     environment:
@@ -181,3 +193,4 @@ volumes:
   qdrant_data:
   neo4j_data:
   tempo_data:
+  vllm_cache:
