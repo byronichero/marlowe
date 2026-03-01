@@ -359,7 +359,7 @@ export default function AiReadiness() {
               <CardDescription>Average score by dimension (1–5)</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center py-6">
-              <RadarChart data={radarData} size={340} />
+              <RadarChart data={radarData} size={520} />
             </CardContent>
           </Card>
           <Card>
@@ -547,7 +547,7 @@ function ActionPlanSection({
           {items.map((item) => {
             return (
               <div key={item.id} className="flex items-start gap-2 text-sm">
-                <span className={`mt-1 text-xs ${bulletClass}`}>●</span>
+                <span className={`mt-0.5 text-base ${bulletClass}`}>●</span>
                 <span>
                   {item.text}
                   <span className="ml-2 text-xs text-muted-foreground">
