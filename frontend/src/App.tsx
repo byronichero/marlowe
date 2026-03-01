@@ -8,6 +8,7 @@ import Reports from './pages/reports'
 import StandardsLibrary from './pages/standards-library'
 import TaxonomyAssessment from './pages/taxonomy-assessment'
 import AiReadiness from './pages/ai-readiness'
+import Taxonomy from './pages/taxonomy'
 import Faq from './pages/faq'
 import Help from './pages/help'
 import Tutorial from './pages/tutorial'
@@ -22,6 +23,7 @@ function App() {
         <Route index element={<Home />} />
         <Route path="knowledge-base" element={<KnowledgeBase />} />
         <Route path="assessments" element={<Assessments />} />
+        <Route path="taxonomy" element={<Taxonomy />} />
         <Route path="ai-readiness" element={<AiReadiness />} />
         <Route path="taxonomy-assessment/:frameworkId" element={<TaxonomyAssessment />} />
         <Route path="standards-library" element={<StandardsLibrary />} />

@@ -446,8 +446,8 @@ function RadarChart({
             cy={center}
             r={r}
             fill="none"
-            stroke="hsl(var(--border))"
-            strokeOpacity={0.5}
+            stroke="hsl(var(--muted-foreground))"
+            strokeOpacity={0.7}
           />
         )
       })}
@@ -462,8 +462,8 @@ function RadarChart({
             y1={center}
             x2={x}
             y2={y}
-            stroke="hsl(var(--border))"
-            strokeOpacity={0.6}
+            stroke="hsl(var(--muted-foreground))"
+            strokeOpacity={0.8}
           />
         )
       })}

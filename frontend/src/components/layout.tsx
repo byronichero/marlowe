@@ -44,6 +44,7 @@ const navigationSections = [
     label: 'GRC',
     items: [
       { name: 'GRC & Gap Analysis', href: '/assessments', icon: ClipboardCheck },
+      { name: 'AI RMF Taxonomy', href: '/taxonomy', icon: ClipboardCheck },
       { name: 'AI Readiness Check', href: '/ai-readiness', icon: ClipboardCheck },
       { name: 'Reports', href: '/reports', icon: FileText },
     ],

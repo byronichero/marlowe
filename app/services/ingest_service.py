@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 DOCLING_EXTENSIONS = {".pdf", ".docx", ".pptx", ".xlsx", ".html", ".htm"}
 TEXT_EXTENSIONS = {".md", ".markdown", ".txt"}
 INGEST_EXTENSIONS = DOCLING_EXTENSIONS | TEXT_EXTENSIONS
+EXTRACT_FAILED_MESSAGE = "Extract failed for %s"
 
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 150
@@ -102,6 +103,59 @@ def _extract_text_from_path(file_path: Path, ext: str) -> str:
     return extract_text_from_file(file_path=file_path)
 
 
+async def _ingest_file_path(
+    file_path: Path,
+    source_path: str,
+    *,
+    client,
+    collection: str,
+) -> dict[str, Any]:
+    """Ingest a single file path into Qdrant and return stats."""
+    try:
+        ext = file_path.suffix.lower()
+        text = _extract_text_from_path(file_path, ext)
+    except Exception as e:
+        logger.exception(EXTRACT_FAILED_MESSAGE, source_path)
+        return {
+            "ok": False,
+            "error": f"{source_path}: {e}",
+            "files_processed": 0,
+            "chunks_ingested": 0,
+        }
+
+    chunks = _chunk_text(text)
+    if not chunks:
+        return {"ok": True, "files_processed": 1, "chunks_ingested": 0, "errors": []}
+
+    vectors = await _embed_chunks(chunks)
+    if len(vectors) != len(chunks):
+        return {
+            "ok": False,
+            "error": f"{source_path}: embedding count mismatch",
+            "files_processed": 0,
+            "chunks_ingested": 0,
+        }
+
+    uploaded_at = datetime.now(timezone.utc).isoformat()
+    points = [
+        PointStruct(
+            id=_stable_point_id(source_path, i),
+            vector=vec,
+            payload={
+                "source": source_path,
+                "chunk_index": i,
+                "text": chunks[i][:2000],
+                "uploaded_at": uploaded_at,
+            },
+        )
+        for i, vec in enumerate(vectors)
+    ]
+    for batch in _batched(points, UPSERT_BATCH_SIZE):
+        upsert_points(collection, batch, client=client)
+    logger.info("Ingested %s: %d chunks", source_path, len(points))
+    return {"ok": True, "files_processed": 1, "chunks_ingested": len(points), "errors": []}
+
+
 async def ingest_single_file(
     file_content: bytes,
     filename: str,
@@ -177,44 +231,29 @@ async def ingest_docs(path_override: str | None = None) -> dict[str, Any]:
     chunks_ingested = 0
     errors: list[str] = []
 
+    if root.is_file():
+        docs_root = _resolve_docs_path()
+        try:
+            rel_path = root.relative_to(docs_root)
+            source_path = str(rel_path).replace("\\", "/")
+        except ValueError:
+            source_path = root.name
+        return await _ingest_file_path(root, source_path, client=client, collection=collection)
+
     for file_path, rel_path in _iter_doc_files(root):
         try:
-            ext = file_path.suffix.lower()
-            text = _extract_text_from_path(file_path, ext)
+            result = await _ingest_file_path(
+                file_path, rel_path, client=client, collection=collection
+            )
         except Exception as e:
-            logger.exception("Extract failed for %s", rel_path)
+            logger.exception(EXTRACT_FAILED_MESSAGE, rel_path)
             errors.append(f"{rel_path}: {e}")
             continue
-
-        chunks = _chunk_text(text)
-        if not chunks:
-            files_processed += 1
+        if not result.get("ok"):
+            errors.append(result.get("error", f"{rel_path}: unknown error"))
             continue
-
-        vectors = await _embed_chunks(chunks)
-        if len(vectors) != len(chunks):
-            errors.append(f"{rel_path}: embedding count mismatch")
-            continue
-
-        uploaded_at = datetime.now(timezone.utc).isoformat()
-        points = [
-            PointStruct(
-                id=_stable_point_id(rel_path, i),
-                vector=vec,
-                payload={
-                    "source": rel_path,
-                    "chunk_index": i,
-                    "text": chunks[i][:2000],
-                    "uploaded_at": uploaded_at,
-                },
-            )
-            for i, vec in enumerate(vectors)
-        ]
-        for batch in _batched(points, UPSERT_BATCH_SIZE):
-            upsert_points(collection, batch, client=client)
-        files_processed += 1
-        chunks_ingested += len(points)
-        logger.info("Ingested %s: %d chunks", rel_path, len(points))
+        files_processed += result.get("files_processed", 0)
+        chunks_ingested += result.get("chunks_ingested", 0)
 
     return {
         "ok": True,

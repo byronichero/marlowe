@@ -34,6 +34,7 @@ export default function KnowledgeBase() {
   const [documents, setDocuments] = useState<DocFile[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [uploadStatus, setUploadStatus] = useState<UploadStatusState>(null)
+  const [ingestStatus, setIngestStatus] = useState<UploadStatusState>(null)
   const [uploadProgress, setUploadProgress] = useState<UploadJob | null>(null)
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerDoc, setViewerDoc] = useState<DocFile | null>(null)
@@ -117,7 +118,22 @@ export default function KnowledgeBase() {
     const files = event.target.files
     if (!files || files.length === 0) return
 
-    const file = files[0]
+  const file = files[0]
+  const normalizedName = file.name.trim().toLowerCase()
+  const hasDuplicate = documents.some(
+    (doc) => doc.name.trim().toLowerCase() === normalizedName
+  )
+  if (hasDuplicate) {
+    setUploadStatus({
+      type: 'error',
+      message: `Upload skipped: ${file.name} already exists.`,
+    })
+    setTimeout(() => setUploadStatus(null), 5000)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    return
+  }
     setUploadStatus({ type: 'loading', message: `Uploading ${file.name}...` })
 
     const formData = new FormData()
@@ -151,10 +167,147 @@ export default function KnowledgeBase() {
     }
   }
 
+async function handleIngestDoc(doc: DocFile) {
+  setIngestStatus({ type: 'loading', message: `Ingesting ${doc.name}...` })
+  try {
+    const path = encodeURIComponent(`docs/${doc.path}`)
+    const response = await fetch(`/api/v1/documents/ingest?path=${path}`, {
+      method: 'POST',
+    })
+    if (!response.ok) {
+      setIngestStatus({
+        type: 'error',
+        message: `Ingest failed: ${response.statusText}`,
+      })
+      setTimeout(() => setIngestStatus(null), 5000)
+      return
+    }
+    const result = await response.json()
+    setIngestStatus({
+      type: 'success',
+      message: `Ingested ${doc.name} (${result.chunks_ingested ?? 0} chunks)`,
+    })
+    setTimeout(() => setIngestStatus(null), 5000)
+  } catch (error) {
+    setIngestStatus({
+      type: 'error',
+      message: `Ingest error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    })
+    setTimeout(() => setIngestStatus(null), 5000)
+  }
+}
+
+function getStatusClass(status: UploadStatusState): string {
+  if (!status) return 'text-muted-foreground'
+  if (status.type === 'success') return 'text-green-600 dark:text-green-400'
+  if (status.type === 'error') return 'text-destructive'
+  return 'text-muted-foreground'
+}
+
+function renderStatusIcon(status: UploadStatusState) {
+  if (!status) return null
+  if (status.type === 'success') return <CheckCircle2 className="h-4 w-4" />
+  if (status.type === 'error') return <XCircle className="h-4 w-4" />
+  if (status.type === 'loading') return <Loader2 className="h-4 w-4 animate-spin" />
+  return null
+}
+
   const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const uploadStatusClass = getStatusClass(uploadStatus)
+  const ingestStatusClass = getStatusClass(ingestStatus)
+  const showUploadProgress =
+    uploadStatus?.type === 'loading' ||
+    uploadProgress?.status === 'pending' ||
+    uploadProgress?.status === 'running'
+
+  let documentsContent: JSX.Element
+  if (isLoading) {
+    documentsContent = (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-5 w-5 rounded" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+            <Skeleton className="h-9 w-24 rounded-md" />
+          </div>
+        ))}
+      </div>
+    )
+  } else if (documents.length === 0) {
+    documentsContent = (
+      <div className="text-center py-8 text-muted-foreground">
+        <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
+        <p>No documents uploaded yet</p>
+        <p className="text-sm mt-2">
+          Upload documents to populate the knowledge base and enable AI-powered search
+        </p>
+      </div>
+    )
+  } else {
+    documentsContent = (
+      <div className="space-y-2">
+        {documents.map((doc) => (
+          <div
+            key={doc.path}
+            className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="font-medium">{doc.name}</p>
+                <p className="text-sm text-muted-foreground">{formatSize(doc.size)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => handleIngestDoc(doc)}>
+                <Upload className="h-4 w-4 mr-1" />
+                Ingest
+              </Button>
+              {canPreview(doc.path) && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setViewerDoc(doc)
+                      setViewerOpen(true)
+                    }}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                  <a
+                    href={`/api/v1/documents/download-md?path=${encodeURIComponent(doc.path)}`}
+                    className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <FileDown className="h-4 w-4 mr-1" />
+                    Download MD
+                  </a>
+                </>
+              )}
+              <a
+                href={`/api/v1/documents/download?path=${encodeURIComponent(doc.path)}`}
+                download
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Download
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -207,12 +360,8 @@ export default function KnowledgeBase() {
               </Button>
             </div>
             {uploadStatus && (
-              <div className={`flex items-center gap-2 text-sm ${
-                uploadStatus.type === 'success' ? 'text-green-600 dark:text-green-400' : uploadStatus.type === 'error' ? 'text-destructive' : 'text-muted-foreground'
-              }`}>
-                {uploadStatus.type === 'success' && <CheckCircle2 className="h-4 w-4" />}
-                {uploadStatus.type === 'error' && <XCircle className="h-4 w-4" />}
-                {uploadStatus.type === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+              <div className={`flex items-center gap-2 text-sm ${uploadStatusClass}`}>
+                {renderStatusIcon(uploadStatus)}
                 {uploadStatus.message}
               </div>
             )}
@@ -295,84 +444,20 @@ export default function KnowledgeBase() {
 
       {/* Documents List */}
       <Card>
-        <CardHeader>
+      <CardHeader className="flex flex-col gap-3">
+        <div>
           <CardTitle>Uploaded Documents</CardTitle>
-          <CardDescription>Documents stored in the knowledge base</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-5 w-5 rounded" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-9 w-24 rounded-md" />
-                </div>
-              ))}
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="mx-auto h-12 w-12 mb-3 opacity-50" />
-              <p>No documents uploaded yet</p>
-              <p className="text-sm mt-2">
-                Upload documents to populate the knowledge base and enable AI-powered search
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {documents.map((doc, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{doc.name}</p>
-                      <p className="text-sm text-muted-foreground">{formatSize(doc.size)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {canPreview(doc.path) && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setViewerDoc(doc)
-                            setViewerOpen(true)
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                        <a
-                          href={`/api/v1/documents/download-md?path=${encodeURIComponent(doc.path)}`}
-                          className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
-                        >
-                          <FileDown className="h-4 w-4 mr-1" />
-                          Download MD
-                        </a>
-                      </>
-                    )}
-                    <a
-                      href={`/api/v1/documents/download?path=${encodeURIComponent(doc.path)}`}
-                      download
-                      className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <Download className="h-4 w-4 mr-1" />
-                      Download
-                    </a>
-                  </div>
-                </div>
-              ))}
+          <CardDescription>Docs folder files (not automatically ingested)</CardDescription>
+          {ingestStatus && (
+            <div className={`mt-2 flex items-center gap-2 text-xs ${ingestStatusClass}`}>
+              {renderStatusIcon(ingestStatus)}
+              {ingestStatus.message}
             </div>
           )}
+        </div>
+      </CardHeader>
+        <CardContent>
+          {documentsContent}
         </CardContent>
       </Card>
 
@@ -398,6 +483,20 @@ export default function KnowledgeBase() {
             title="Document preview"
             className="flex-1 w-full min-h-0 rounded border"
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showUploadProgress} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Uploading document</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>
+              {uploadStatus?.message ?? 'Processing upload...'}
+            </span>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
