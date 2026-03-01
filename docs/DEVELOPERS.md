@@ -288,6 +288,13 @@ npm install
 npm run dev
 ```
 
+#### CopilotKit update banner
+
+Marlowe suppresses the CopilotKit dev console update banner in the UI to avoid
+prompting end users to upgrade packages. The banner is hidden via CSS in
+`frontend/src/index.css` (see `.copilotKitDevConsole`). If you want the update
+banner and debug menu to appear again, remove or override that rule.
+
 ### Useful Commands
 
 ```bash

@@ -70,3 +70,8 @@
 .copilotKitWindow {
   z-index: 9999 !important;
 }
+
+/* Hide CopilotKit dev console update banner in Marlowe UI */
+.copilotKitDevConsole {
+  display: none !important;
+}
