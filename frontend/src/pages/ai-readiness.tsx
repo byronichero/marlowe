@@ -41,6 +41,12 @@ interface ReadinessState {
   checks: Record<string, CheckState>
 }
 
+interface ActionPlanItem {
+  id: string
+  text: string
+  score: number
+}
+
 const STORAGE_KEY = 'aiReadiness:v1'
 const SCORE_OPTIONS = [1, 2, 3, 4, 5]
 
@@ -249,6 +255,12 @@ export default function AiReadiness() {
 
   const taxonomy = data.ai_trustworthiness_taxonomy
 
+  const actionPlan = buildActionPlan(
+    taxonomy.dimensions,
+    state,
+    buildCheckId
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -346,8 +358,8 @@ export default function AiReadiness() {
               <CardTitle className="text-base">Readiness radar</CardTitle>
               <CardDescription>Average score by dimension (1–5)</CardDescription>
             </CardHeader>
-            <CardContent className="flex items-center justify-center">
-              <RadarChart data={radarData} size={260} />
+            <CardContent className="flex items-center justify-center py-6">
+              <RadarChart data={radarData} size={340} />
             </CardContent>
           </Card>
           <Card>
@@ -362,34 +374,34 @@ export default function AiReadiness() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Action plan template</CardTitle>
+              <CardTitle className="text-base">Action plan</CardTitle>
+              <CardDescription>Auto-assigned based on checklist scores.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div>
-                <div className="font-medium text-foreground">Immediate actions</div>
-                {taxonomy.action_plan_template.immediate_actions.map((item, idx) => (
-                  <div key={`${item}-${idx}`}>{item || '[ ]'}</div>
-                ))}
-              </div>
-              <div>
-                <div className="font-medium text-foreground">Short term actions</div>
-                {taxonomy.action_plan_template.short_term_actions.map((item, idx) => (
-                  <div key={`${item}-${idx}`}>{item || '[ ]'}</div>
-                ))}
-              </div>
-              <div>
-                <div className="font-medium text-foreground">Long term actions</div>
-                {taxonomy.action_plan_template.long_term_actions.map((item, idx) => (
-                  <div key={`${item}-${idx}`}>{item || '[ ]'}</div>
-                ))}
-              </div>
+              <ActionPlanSection
+                title="Immediate actions"
+                items={actionPlan.immediate}
+                bulletClass="text-red-500"
+              />
+              <ActionPlanSection
+                title="Short term actions"
+                items={actionPlan.shortTerm}
+                bulletClass="text-orange-500"
+              />
+              <ActionPlanSection
+                title="Long term actions"
+                items={actionPlan.longTerm}
+                bulletClass="text-yellow-500"
+              />
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Notes</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">{taxonomy.notes}</CardContent>
+            <CardContent className="text-sm text-muted-foreground">
+              {taxonomy.notes}
+            </CardContent>
           </Card>
         </div>
       </div>
@@ -487,6 +499,67 @@ function RadarChart({
         )
       })}
     </svg>
+  )
+}
+
+function buildActionPlan(
+  dimensions: Array<{ name: string; checks: string[] }>,
+  state: ReadinessState,
+  idBuilder: (dimensionName: string, index: number) => string
+): { immediate: ActionPlanItem[]; shortTerm: ActionPlanItem[]; longTerm: ActionPlanItem[] } {
+  const immediate: ActionPlanItem[] = []
+  const shortTerm: ActionPlanItem[] = []
+  const longTerm: ActionPlanItem[] = []
+  for (const dimension of dimensions) {
+    dimension.checks.forEach((check, idx) => {
+      const id = idBuilder(dimension.name, idx)
+      const score = state.checks[id]?.score
+      if (typeof score !== 'number') return
+      const item: ActionPlanItem = { id, text: check, score }
+      if (score <= 2) {
+        immediate.push(item)
+      } else if (score === 3) {
+        shortTerm.push(item)
+      } else {
+        longTerm.push(item)
+      }
+    })
+  }
+  return { immediate, shortTerm, longTerm }
+}
+
+function ActionPlanSection({
+  title,
+  items,
+  bulletClass,
+}: Readonly<{
+  title: string
+  items: ActionPlanItem[]
+  bulletClass: string
+}>) {
+  return (
+    <div>
+      <div className="font-medium text-foreground">{title}</div>
+      {items.length === 0 ? (
+        <div className="text-xs text-muted-foreground">No items yet</div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => {
+            return (
+              <div key={item.id} className="flex items-start gap-2 text-sm">
+                <span className={`mt-1 text-xs ${bulletClass}`}>●</span>
+                <span>
+                  {item.text}
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (Score {item.score})
+                  </span>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
