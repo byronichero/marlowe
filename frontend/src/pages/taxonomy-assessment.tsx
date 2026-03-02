@@ -1,13 +1,52 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { api } from '@/lib/api'
 import type { Assessment, Framework, RequirementAssessmentItem } from '@/types'
-import { Loader2, ArrowLeft, Filter } from 'lucide-react'
+import { Loader2, ArrowLeft, Filter, BookOpen } from 'lucide-react'
+
+/** NIST AI RMF Playbook entry (from nist_ai_rmf_playbook.json). */
+interface PlaybookEntry {
+  title: string
+  type: string
+  category: string
+  description: string
+  section_about?: string
+  section_actions?: string
+  section_doc?: string
+  section_ref?: string
+}
+
+const PLAYBOOK_URL = '/nist_ai_rmf_playbook.json'
+
+/** Parse "Relevant NIST AI RMF Subcategories: Govern 5.1 Map 1.1" from description. */
+function parseSubcategories(description: string | null | undefined): string[] {
+  if (!description) return []
+  const idx = description.search(/Relevant NIST AI RMF Subcategories:\s*/i)
+  if (idx < 0) return []
+  const after = description.slice(idx).replace(/^Relevant NIST AI RMF Subcategories:\s*/i, '')
+  const line = after.split(/\n/)[0].trim()
+  const tokens = line.match(/[A-Za-z]+\s+\d+\.\d+/g) ?? []
+  return [...new Set(tokens)]
+}
+
+/** Normalize "Govern 5.1" -> "GOVERN 5.1" for playbook lookup. */
+function normalizeSubcategory(token: string): string {
+  const parts = token.match(/^([A-Za-z]+)\s+(\d+\.\d+)$/)
+  if (!parts) return token.toUpperCase()
+  return `${parts[1].toUpperCase()} ${parts[2]}`
+}
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -37,6 +76,20 @@ export default function TaxonomyAssessment() {
   const [familyFilter, setFamilyFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [playbookMap, setPlaybookMap] = useState<Map<string, PlaybookEntry>>(new Map())
+
+  useEffect(() => {
+    fetch(PLAYBOOK_URL)
+      .then((r) => r.json())
+      .then((arr: PlaybookEntry[]) => {
+        const map = new Map<string, PlaybookEntry>()
+        for (const entry of arr) {
+          if (entry.title) map.set(entry.title.toUpperCase(), entry)
+        }
+        setPlaybookMap(map)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!Number.isFinite(frameworkId)) return
@@ -339,6 +392,7 @@ export default function TaxonomyAssessment() {
                   key={row.requirement_id}
                   row={row}
                   savingId={savingId}
+                  playbookMap={playbookMap}
                   onStatusChange={handleStatusChange}
                   onMaturityChange={handleMaturityChange}
                   onNotesChange={handleNotesChange}
@@ -394,6 +448,7 @@ function MaturityBarList({
 function TaxonomyRow({
   row,
   savingId,
+  playbookMap,
   onStatusChange,
   onMaturityChange,
   onNotesChange,
@@ -401,11 +456,31 @@ function TaxonomyRow({
 }: Readonly<{
   row: RequirementAssessmentItem
   savingId: number | null
+  playbookMap: Map<string, PlaybookEntry>
   onStatusChange: (requirementId: number, value: string) => void
   onMaturityChange: (requirementId: number, value: string) => void
   onNotesChange: (requirementId: number, value: string) => void
   onNotesBlur: (requirementId: number, value: string) => void
 }>) {
+  const subcategories = useMemo(
+    () => parseSubcategories(row.description),
+    [row.description]
+  )
+  const [playbookOpen, setPlaybookOpen] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState<PlaybookEntry | null>(null)
+
+  const handleSubcategoryClick = useCallback(
+    (token: string) => {
+      const key = normalizeSubcategory(token)
+      const entry = playbookMap.get(key)
+      if (entry) {
+        setSelectedEntry(entry)
+        setPlaybookOpen(true)
+      }
+    },
+    [playbookMap]
+  )
+
   return (
     <div className="rounded-lg border p-4 space-y-3">
       <div className="flex flex-wrap gap-3 items-start justify-between">
@@ -414,6 +489,30 @@ function TaxonomyRow({
           <h3 className="font-medium">{row.title}</h3>
           {row.description && (
             <p className="text-sm text-muted-foreground">{row.description}</p>
+          )}
+          {subcategories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {subcategories.map((token) => {
+                const key = normalizeSubcategory(token)
+                const hasPlaybook = playbookMap.has(key)
+                return (
+                  <button
+                    key={token}
+                    type="button"
+                    onClick={() => hasPlaybook && handleSubcategoryClick(token)}
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                      hasPlaybook
+                        ? 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
+                        : 'bg-muted text-muted-foreground cursor-default'
+                    }`}
+                    title={hasPlaybook ? `View NIST AI RMF Playbook: ${token}` : undefined}
+                  >
+                    {hasPlaybook && <BookOpen className="h-3 w-3" />}
+                    {token}
+                  </button>
+                )
+              })}
+            </div>
           )}
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             {row.level && <span>{row.level}</span>}
@@ -476,6 +575,54 @@ function TaxonomyRow({
           onBlur={(e) => onNotesBlur(row.requirement_id, e.target.value)}
         />
       </div>
+
+      <Dialog open={playbookOpen} onOpenChange={setPlaybookOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              {selectedEntry?.title} — NIST AI RMF Playbook
+            </DialogTitle>
+            <DialogDescription>{selectedEntry?.description}</DialogDescription>
+          </DialogHeader>
+          {selectedEntry && (
+            <div className="space-y-4 text-sm">
+              {selectedEntry.section_about && (
+                <div>
+                  <h4 className="font-medium mb-1">About</h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap">
+                    {selectedEntry.section_about}
+                  </p>
+                </div>
+              )}
+              {selectedEntry.section_actions && (
+                <div>
+                  <h4 className="font-medium mb-1">Actions</h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap">
+                    {selectedEntry.section_actions}
+                  </p>
+                </div>
+              )}
+              {selectedEntry.section_doc && (
+                <div>
+                  <h4 className="font-medium mb-1">Documentation guidance</h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap">
+                    {selectedEntry.section_doc}
+                  </p>
+                </div>
+              )}
+              {selectedEntry.section_ref && (
+                <div>
+                  <h4 className="font-medium mb-1">References</h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap text-xs">
+                    {selectedEntry.section_ref}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
