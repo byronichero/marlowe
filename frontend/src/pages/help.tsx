@@ -2,16 +2,46 @@ import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Book, MessageSquare, FileText, Network, Database, Theater } from 'lucide-react'
 
-const helpSections = [
+interface HelpItem {
+  title: string
+  description: string
+  href?: string
+}
+
+const helpSections: Array<{
+  title: string
+  icon: typeof Book
+  description: string
+  items: HelpItem[]
+}> = [
   {
     title: 'Getting Started',
     icon: Book,
     description: 'Learn how to set up and use Marlowe',
     items: [
-      'Create your first assessment',
-      'Upload documents to the knowledge base',
-      'Explore the knowledge graph',
-      'Chat with the AI assistant',
+      {
+        title: 'Create your first assessment',
+        description:
+          'Go to GRC & Gap Analysis, add a framework (e.g. ISO 42001 or NIST 800-53), upload evidence, and run a gap analysis to identify compliance gaps.',
+        href: '/assessments',
+      },
+      {
+        title: 'Upload documents to the knowledge base',
+        description:
+          'Visit Knowledge Base to upload PDF, DOCX, or TXT files. Documents are indexed for semantic search and RAG. You can also try synthetic AI RMF data from the Tutorial.',
+        href: '/knowledge-base',
+      },
+      {
+        title: 'Explore the knowledge graph',
+        description:
+          'The Knowledge Graph page shows relationships between frameworks, requirements, and controls. Data syncs from PostgreSQL to Neo4j. Use filters and zoom to navigate.',
+        href: '/knowledge-graph',
+      },
+      {
+        title: 'Chat with the AI assistant',
+        description:
+          'Use the AI Chat to ask questions about your documents, frameworks, and compliance posture. Answers use RAG with context from your knowledge base.',
+      },
     ],
   },
   {
@@ -19,10 +49,26 @@ const helpSections = [
     icon: Database,
     description: 'Managing your documents and data',
     items: [
-      'Supported file formats (PDF, DOCX, TXT)',
-      'OCR and text extraction',
-      'Semantic search with embeddings',
-      'Document metadata and tagging',
+      {
+        title: 'Supported file formats (PDF, DOCX, TXT)',
+        description:
+          'Upload PDFs, Word documents, or plain text files. PDFs are parsed for text; scanned PDFs may use OCR for extraction.',
+      },
+      {
+        title: 'OCR and text extraction',
+        description:
+          'Documents are processed to extract text. Scanned or image-based PDFs can use OCR when enabled to make content searchable.',
+      },
+      {
+        title: 'Semantic search with embeddings',
+        description:
+          'Content is embedded into vectors (e.g. via Chroma or Qdrant). Semantic search finds relevant passages by meaning, not just keywords.',
+      },
+      {
+        title: 'Document metadata and tagging',
+        description:
+          'Documents can have metadata and tags to organize and filter. Use these to group by project, framework, or compliance domain.',
+      },
     ],
   },
   {
@@ -30,10 +76,26 @@ const helpSections = [
     icon: Network,
     description: 'Understanding relationships',
     items: [
-      'Neo4j graph database',
-      'Automatic sync from PostgreSQL',
-      'Node types and relationships',
-      'Interactive visualization',
+      {
+        title: 'Neo4j graph database',
+        description:
+          'Marlowe uses Neo4j to store entities (frameworks, requirements, controls) and their relationships. Query with Cypher for advanced analysis.',
+      },
+      {
+        title: 'Automatic sync from PostgreSQL',
+        description:
+          'Frameworks, requirements, and controls are synced from PostgreSQL into Neo4j. The graph reflects the current GRC data.',
+      },
+      {
+        title: 'Node types and relationships',
+        description:
+          'Nodes represent frameworks, requirements, and controls. Edges show containment, mapping, and inheritance between them.',
+      },
+      {
+        title: 'Interactive visualization',
+        description:
+          'Use the graph view to zoom, pan, and click nodes. Filters let you focus on specific frameworks or requirement types.',
+      },
     ],
   },
   {
@@ -41,10 +103,26 @@ const helpSections = [
     icon: MessageSquare,
     description: 'Using the AI assistant',
     items: [
-      'RAG (Retrieval Augmented Generation)',
-      'Model selection',
-      'Context from uploaded documents',
-      'Conversation history',
+      {
+        title: 'RAG (Retrieval Augmented Generation)',
+        description:
+          'Answers are grounded in your documents and knowledge base. The system retrieves relevant passages and passes them to the LLM for context-aware responses.',
+      },
+      {
+        title: 'Model selection',
+        description:
+          'Choose an LLM (e.g. via Ollama or an API provider). Different models trade off speed, cost, and quality for your use case.',
+      },
+      {
+        title: 'Context from uploaded documents',
+        description:
+          'The chat pulls context from documents you’ve uploaded. More documents improve relevance and reduce hallucinations.',
+      },
+      {
+        title: 'Conversation history',
+        description:
+          'Sessions keep conversation history so you can refer back to earlier questions and answers within the same chat.',
+      },
     ],
   },
 ]
@@ -70,11 +148,23 @@ export default function Help() {
               <CardDescription>{section.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2">
+              <ul className="space-y-4">
                 {section.items.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm">
-                    <span className="text-primary mt-1">•</span>
-                    <span>{item}</span>
+                  <li key={item.title} className="flex items-start gap-3">
+                    <span className="text-primary mt-1 shrink-0">•</span>
+                    <div className="min-w-0">
+                      {item.href ? (
+                        <Link
+                          to={item.href}
+                          className="font-medium text-foreground hover:text-primary hover:underline"
+                        >
+                          {item.title}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-foreground">{item.title}</span>
+                      )}
+                      <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
+                    </div>
                   </li>
                 ))}
               </ul>
