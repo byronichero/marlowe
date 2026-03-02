@@ -1,7 +1,7 @@
 """Assessment and RequirementAssessment models."""
 
 from datetime import date, datetime
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -44,6 +44,7 @@ class RequirementAssessment(Base):
     requirement_id: Mapped[int] = mapped_column(ForeignKey("requirements.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending", index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    maturity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     assessment: Mapped["Assessment"] = relationship("Assessment", back_populates="requirement_assessments")
     requirement: Mapped["Requirement"] = relationship("Requirement", back_populates="requirement_assessments")

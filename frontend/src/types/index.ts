@@ -57,6 +57,7 @@ export interface RequirementAssessmentItem {
   family?: string
   status: string
   notes?: string | null
+  maturity_score?: number | null
 }
 
 export interface GapAnalysisReport {

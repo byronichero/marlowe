@@ -63,10 +63,12 @@ const steps = [
 
 const synthCommandIso = 'python scripts/synth_iso27001.py'
 const synthCommandFedramp = 'python scripts/synth_fedramp_low.py'
+const synthCommandTaxonomy = 'python scripts/synth_taxonomy.py'
 
 export default function Tutorial() {
   const [copiedIso, setCopiedIso] = useState(false)
   const [copiedFedramp, setCopiedFedramp] = useState(false)
+  const [copiedTaxonomy, setCopiedTaxonomy] = useState(false)
 
   const handleCopyIso = () => {
     navigator.clipboard.writeText(synthCommandIso)
@@ -78,6 +80,12 @@ export default function Tutorial() {
     navigator.clipboard.writeText(synthCommandFedramp)
     setCopiedFedramp(true)
     setTimeout(() => setCopiedFedramp(false), 2000)
+  }
+
+  const handleCopyTaxonomy = () => {
+    navigator.clipboard.writeText(synthCommandTaxonomy)
+    setCopiedTaxonomy(true)
+    setTimeout(() => setCopiedTaxonomy(false), 2000)
   }
 
   return (
@@ -210,6 +218,47 @@ export default function Tutorial() {
           </p>
           <Link to="/assessments">
             <Button>Go to Assessments</Button>
+          </Link>
+        </CardContent>
+      </Card>
+
+      {/* Try with synthetic data - Taxonomy */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Terminal className="h-5 w-5" />
+            Try with Synthetic Data (AI RMF Taxonomy)
+          </CardTitle>
+          <CardDescription>
+            Populate random maturity scores in the Taxonomy Entry Table. Requires the taxonomy
+            framework and backend to be running.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm">Run this in your project root:</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <code className="flex-1 rounded-md border bg-muted px-4 py-3 text-sm font-mono">
+              {synthCommandTaxonomy}
+            </code>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleCopyTaxonomy}
+              className="shrink-0"
+              aria-label="Copy command"
+            >
+              {copiedTaxonomy ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Output: updates taxonomy assessment rows via the API (no files generated).
+          </p>
+          <Link to="/taxonomy">
+            <Button>Go to Taxonomy</Button>
           </Link>
         </CardContent>
       </Card>

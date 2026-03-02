@@ -298,6 +298,10 @@ banner and debug menu to appear again, remove or override that rule.
 ### Useful Commands
 
 ```bash
+# Marlowe CLI (after pip install -e . or uv sync)
+marlowe --version
+marlowe health
+
 # Ingest docs into Qdrant
 python -m app.scripts.ingest_docs
 
@@ -307,6 +311,8 @@ python -m app.scripts.seed_nist_80053
 # Run tests
 pytest
 ```
+
+**Note:** The `marlowe` CLI is available after installing the package (`pip install -e .` or `uv sync`). New installs must run this step to use the CLI.
 
 ---
 

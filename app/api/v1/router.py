@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    admin,
     health,
     llm,
     frameworks,
@@ -23,6 +24,7 @@ from app.api.v1 import (
 api_router = APIRouter()
 
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
 api_router.include_router(nist.router, prefix="/nist", tags=["nist"])
 api_router.include_router(frameworks.router, prefix="/frameworks", tags=["frameworks"])

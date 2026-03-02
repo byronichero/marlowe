@@ -21,6 +21,7 @@ import {
   Sun,
   Monitor,
   GraduationCap,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -52,13 +53,17 @@ const navigationSections = [
   {
     label: 'Support',
     items: [
+      { name: 'About', href: '/about-marlowe', icon: BookOpen },
       { name: 'FAQ', href: '/faq', icon: HelpCircle },
       { name: 'Help', href: '/help', icon: Info },
     ],
   },
   {
     label: 'Admin',
-    items: [{ name: 'Observability', href: '/admin/observability', icon: Activity }],
+    items: [
+      { name: 'Dashboard', href: '/admin', icon: Settings },
+      { name: 'Observability', href: '/admin/observability', icon: Activity },
+    ],
   },
 ]
 

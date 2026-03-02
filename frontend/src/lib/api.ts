@@ -44,6 +44,17 @@ export const api = {
   // Health check
   getHealth: () => fetchAPI<HealthResponse>('health'),
 
+  // Admin
+  getAdminServices: () =>
+    fetchAPI<{
+      services: Record<
+        string,
+        { status: string; message: string }
+      >
+    }>('admin/services'),
+  getAdminVersion: () =>
+    fetchAPI<{ app_version: string; cli_version: string }>('admin/version'),
+
   // Frameworks
   getFrameworks: () => fetchAPI<Framework[]>('frameworks'),
   getFrameworksLibrary: () => fetchAPI<FrameworkLibraryItem[]>('frameworks/library'),
@@ -173,7 +184,7 @@ export const api = {
   updateAssessmentRequirement: (
     assessmentId: number,
     requirementId: number,
-    payload: { status?: string; notes?: string | null }
+    payload: { status?: string; notes?: string | null; maturity_score?: number | null }
   ) =>
     fetchAPI<RequirementAssessmentItem>(
       `assessments/${assessmentId}/requirements/${requirementId}`,

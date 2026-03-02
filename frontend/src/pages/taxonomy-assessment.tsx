@@ -16,6 +16,15 @@ const STATUS_OPTIONS = [
   { value: 'not_applicable', label: 'Not applicable' },
 ]
 
+const MATURITY_OPTIONS = [
+  { value: 0, label: '0 — Not started' },
+  { value: 1, label: '1 — Ad hoc' },
+  { value: 2, label: '2 — Defined' },
+  { value: 3, label: '3 — Implemented' },
+  { value: 4, label: '4 — Measured' },
+  { value: 5, label: '5 — Optimized' },
+]
+
 export default function TaxonomyAssessment() {
   const params = useParams()
   const frameworkId = Number(params.frameworkId)
@@ -91,6 +100,40 @@ export default function TaxonomyAssessment() {
     })
   }, [rows, search, stageFilter, familyFilter, statusFilter])
 
+  const stageMaturity = useMemo(() => {
+    const entries = new Map<string, { total: number; count: number }>()
+    rows.forEach((row) => {
+      if (!row.level || row.maturity_score == null) return
+      const current = entries.get(row.level) ?? { total: 0, count: 0 }
+      entries.set(row.level, {
+        total: current.total + row.maturity_score,
+        count: current.count + 1,
+      })
+    })
+    return Array.from(entries.entries()).map(([stage, { total, count }]) => ({
+      stage,
+      avg: Number((total / count).toFixed(2)),
+      count,
+    }))
+  }, [rows])
+
+  const characteristicMaturity = useMemo(() => {
+    const entries = new Map<string, { total: number; count: number }>()
+    rows.forEach((row) => {
+      if (!row.family || row.maturity_score == null) return
+      const current = entries.get(row.family) ?? { total: 0, count: 0 }
+      entries.set(row.family, {
+        total: current.total + row.maturity_score,
+        count: current.count + 1,
+      })
+    })
+    return Array.from(entries.entries()).map(([family, { total, count }]) => ({
+      family,
+      avg: Number((total / count).toFixed(2)),
+      count,
+    }))
+  }, [rows])
+
   function handleStatusChange(requirementId: number, value: string) {
     updateRow(requirementId, { status: value })
   }
@@ -107,9 +150,14 @@ export default function TaxonomyAssessment() {
     updateRow(requirementId, { notes: value || null })
   }
 
+  function handleMaturityChange(requirementId: number, value: string) {
+    const nextValue = value === '' ? null : Number(value)
+    updateRow(requirementId, { maturity_score: nextValue })
+  }
+
   async function updateRow(
     requirementId: number,
-    payload: { status?: string; notes?: string | null }
+    payload: { status?: string; notes?: string | null; maturity_score?: number | null }
   ) {
     if (!assessment) return
     setSavingId(requirementId)
@@ -225,6 +273,49 @@ export default function TaxonomyAssessment() {
       </Card>
 
       <Card>
+        <CardHeader>
+          <CardTitle>Maturity summary</CardTitle>
+          <CardDescription>Average maturity (0–5) by stage and characteristic.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">By stage</h4>
+            {stageMaturity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No scores yet</p>
+            ) : (
+              <div className="space-y-1 text-sm">
+                {stageMaturity.map((item) => (
+                  <div key={item.stage} className="flex items-center justify-between">
+                    <span>{item.stage}</span>
+                    <span className="text-muted-foreground">
+                      {item.avg} · {item.count} scored
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">By characteristic</h4>
+            {characteristicMaturity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No scores yet</p>
+            ) : (
+              <div className="space-y-1 text-sm">
+                {characteristicMaturity.map((item) => (
+                  <div key={item.family} className="flex items-center justify-between">
+                    <span>{item.family}</span>
+                    <span className="text-muted-foreground">
+                      {item.avg} · {item.count} scored
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="flex-row items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -255,6 +346,7 @@ export default function TaxonomyAssessment() {
                   row={row}
                   savingId={savingId}
                   onStatusChange={handleStatusChange}
+                  onMaturityChange={handleMaturityChange}
                   onNotesChange={handleNotesChange}
                   onNotesBlur={handleNotesBlur}
                 />
@@ -271,12 +363,14 @@ function TaxonomyRow({
   row,
   savingId,
   onStatusChange,
+  onMaturityChange,
   onNotesChange,
   onNotesBlur,
 }: Readonly<{
   row: RequirementAssessmentItem
   savingId: number | null
   onStatusChange: (requirementId: number, value: string) => void
+  onMaturityChange: (requirementId: number, value: string) => void
   onNotesChange: (requirementId: number, value: string) => void
   onNotesBlur: (requirementId: number, value: string) => void
 }>) {
@@ -294,7 +388,7 @@ function TaxonomyRow({
             {row.family && <span>• {row.family}</span>}
           </div>
         </div>
-        <div className="min-w-[200px] space-y-2">
+        <div className="min-w-[240px] space-y-2">
           <label
             htmlFor={`status-${row.requirement_id}`}
             className="text-xs font-medium text-muted-foreground"
@@ -307,6 +401,24 @@ function TaxonomyRow({
             onChange={(e) => onStatusChange(row.requirement_id, e.target.value)}
           >
             {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+          <label
+            htmlFor={`maturity-${row.requirement_id}`}
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Maturity (0–5)
+          </label>
+          <Select
+            id={`maturity-${row.requirement_id}`}
+            value={row.maturity_score?.toString() ?? ''}
+            onChange={(e) => onMaturityChange(row.requirement_id, e.target.value)}
+          >
+            <option value="">Not scored</option>
+            {MATURITY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>

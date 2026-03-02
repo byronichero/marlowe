@@ -117,6 +117,7 @@ async def init_requirement_assessments(
                 requirement_id=req_id,
                 status="pending",
                 notes=None,
+                maturity_score=None,
             )
         )
         created += 1
@@ -161,6 +162,7 @@ async def list_requirement_assessments(
                 family=req.family,
                 status=ra.status if ra else "pending",
                 notes=ra.notes if ra else None,
+                maturity_score=ra.maturity_score if ra else None,
             )
         )
     return items
@@ -205,6 +207,8 @@ async def update_requirement_assessment(
         ra.status = payload.status
     if payload.notes is not None:
         ra.notes = payload.notes
+    if payload.maturity_score is not None:
+        ra.maturity_score = payload.maturity_score
     await db.flush()
     await db.refresh(ra)
 
@@ -218,4 +222,5 @@ async def update_requirement_assessment(
         family=req.family,
         status=ra.status,
         notes=ra.notes,
+        maturity_score=ra.maturity_score,
     )

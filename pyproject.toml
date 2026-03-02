@@ -35,6 +35,9 @@ dependencies = [
     "faster-whisper>=1.0.0",
 ]
 
+[project.scripts]
+marlowe = "app.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",

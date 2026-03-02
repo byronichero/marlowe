@@ -39,6 +39,7 @@ class RequirementAssessmentRead(BaseModel):
     requirement_id: int
     status: str
     notes: str | None
+    maturity_score: int | None = Field(None, ge=0, le=5)
 
 
 class RequirementAssessmentUpdate(BaseModel):
@@ -46,6 +47,7 @@ class RequirementAssessmentUpdate(BaseModel):
 
     status: str | None = None
     notes: str | None = None
+    maturity_score: int | None = Field(None, ge=0, le=5)
 
 
 class RequirementAssessmentItem(BaseModel):
@@ -60,3 +62,4 @@ class RequirementAssessmentItem(BaseModel):
     family: str | None
     status: str
     notes: str | None
+    maturity_score: int | None = Field(None, ge=0, le=5)

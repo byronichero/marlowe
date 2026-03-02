@@ -128,6 +128,29 @@ VLLM_EMBEDDINGS_MODEL=<embedding-model-id>   # optional but recommended for RAG
 
 **Chat** lets users choose a model from a dropdown. The list is loaded from `GET /api/v1/llm/models`. Send the selected model in the chat request body as `model`; the reply includes `model_used`.
 
+## Marlowe CLI (optional)
+
+The Marlowe CLI provides health checks and admin tasks from the terminal. **New installs** must install the package first:
+
+```bash
+# From project root (development)
+pip install -e .
+# or
+uv sync
+```
+
+When published to PyPI: `pip install marlowe`.
+
+Then:
+
+```bash
+marlowe --version
+marlowe health              # Check API, Postgres, Redis, Qdrant, Neo4j, MinIO, LLM
+marlowe health --base-url http://localhost:5010 --json
+```
+
+The Admin page (Admin → Dashboard) shows the same service status and copyable CLI commands with the live version from the backend.
+
 ## Project structure
 
 - `app/` – FastAPI application (core, models, schemas, api, services, agents)
