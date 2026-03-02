@@ -278,38 +278,32 @@ export default function TaxonomyAssessment() {
           <CardDescription>Average maturity (0–5) by stage and characteristic.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h4 className="text-sm font-medium">By stage</h4>
             {stageMaturity.length === 0 ? (
               <p className="text-sm text-muted-foreground">No scores yet</p>
             ) : (
-              <div className="space-y-1 text-sm">
-                {stageMaturity.map((item) => (
-                  <div key={item.stage} className="flex items-center justify-between">
-                    <span>{item.stage}</span>
-                    <span className="text-muted-foreground">
-                      {item.avg} · {item.count} scored
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <MaturityBarList
+                items={stageMaturity.map(({ stage, avg, count }) => ({
+                  label: stage,
+                  avg,
+                  count,
+                }))}
+              />
             )}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h4 className="text-sm font-medium">By characteristic</h4>
             {characteristicMaturity.length === 0 ? (
               <p className="text-sm text-muted-foreground">No scores yet</p>
             ) : (
-              <div className="space-y-1 text-sm">
-                {characteristicMaturity.map((item) => (
-                  <div key={item.family} className="flex items-center justify-between">
-                    <span>{item.family}</span>
-                    <span className="text-muted-foreground">
-                      {item.avg} · {item.count} scored
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <MaturityBarList
+                items={characteristicMaturity.map(({ family: label, avg, count }) => ({
+                  label,
+                  avg,
+                  count,
+                }))}
+              />
             )}
           </div>
         </CardContent>
@@ -355,6 +349,44 @@ export default function TaxonomyAssessment() {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function MaturityBarList({
+  items,
+}: Readonly<{
+  items: Array<{ label: string; avg: number; count: number }>
+}>) {
+  const maxScore = 5
+  const barMaxWidth = 140
+
+  return (
+    <div className="space-y-3">
+      {items.map(({ label, avg, count }) => (
+        <div key={label} className="flex items-center gap-3">
+          <div className="min-w-[6rem] shrink-0">
+            <span className="text-sm font-medium">{label}</span>
+            <span className="ml-1.5 text-xs text-muted-foreground">
+              ({count} scored)
+            </span>
+          </div>
+          <div className="relative flex flex-1 items-center gap-2">
+            <div
+              className="h-5 rounded-md bg-muted"
+              style={{ width: barMaxWidth }}
+            >
+              <div
+                className="h-full rounded-md bg-primary/80 transition-all"
+                style={{ width: (avg / maxScore) * barMaxWidth }}
+              />
+            </div>
+            <span className="w-8 shrink-0 text-right text-sm font-medium tabular-nums">
+              {avg.toFixed(1)}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
