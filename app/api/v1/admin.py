@@ -116,5 +116,5 @@ async def get_version() -> dict[str, Any]:
 
         app_version = version("marlowe")
     except Exception:
-        app_version = "0.1.0"
+        app_version = "1.0.0"
     return {"app_version": app_version, "cli_version": app_version}

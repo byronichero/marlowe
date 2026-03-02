@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Marlowe API",
         description="AI governance – frameworks, assessments, evidence, knowledge graph",
-        version="0.1.0",
+        version="1.0.0",
         lifespan=lifespan,
     )
     init_otel(app)
