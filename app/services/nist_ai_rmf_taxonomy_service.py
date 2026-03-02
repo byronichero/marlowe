@@ -106,10 +106,16 @@ def _normalize_stage(raw_stage: str) -> str | None:
 
 
 def _is_separator_row(line: str) -> bool:
-    stripped = line.strip().strip("|").strip()
-    if not stripped:
+    """Detect markdown table separator rows like | --- | --- | --- | --- |."""
+    if not line.lstrip().startswith("|"):
+        return False
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    if not cells:
         return True
-    return all(ch in "-: " for ch in stripped)
+    for cell in cells:
+        if cell and not all(ch in "-: " for ch in cell):
+            return False
+    return True
 
 
 def _parse_table_row(line: str) -> list[str] | None:
@@ -215,9 +221,12 @@ def _parse_taxonomy_markdown(path: Path) -> list[dict[str, str | None]]:
         if stage is None:
             continue
         saw_stage = True
-        if _parse_table_row(line) is None and line.lstrip().startswith("|"):
-            # Appendix II switches to a 3-column table; stop once stages are parsed.
-            break
+        if line.lstrip().startswith("|"):
+            if _is_separator_row(line):
+                continue
+            if _parse_table_row(line) is None:
+                # Appendix II switches to a 3-column table; stop once stages are parsed.
+                break
         item, characteristic = _item_from_table_line(
             line, stage, characteristic, stage_counts
         )

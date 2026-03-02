@@ -55,7 +55,7 @@ async def seed_nist_80053_catalog(
 
 
 @router.post("/taxonomy/seed", response_model=TaxonomySeedResponse)
-async def seed_nist_ai_rmf_taxonomy(
+async def seed_taxonomy_endpoint(
     replace_existing: bool = Query(False, description="Replace existing taxonomy framework if present"),
     mvp_only: bool = Query(False, description="Seed only Plan and Design + Collect and Process Data stages"),
     db: AsyncSession = Depends(get_db),
