@@ -142,6 +142,7 @@ const techArch = [
     title: 'AI & ML',
     items: [
       'Ollama (default) or vLLM — LLM inference',
+      "Marlowe's built-in optional vLLM capability for self-hosted, scalable inference",
       'RAG with semantic search',
       'Vector embeddings (nomic-embed-text)',
       'Docling — Document extraction (PDF, DOCX, etc.)',

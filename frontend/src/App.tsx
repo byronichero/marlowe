@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/layout'
+import { SplashOverlay } from './components/splash-overlay'
 import Home from './pages/home'
 import KnowledgeBase from './pages/knowledge-base'
 import Assessments from './pages/assessments'
@@ -13,13 +14,16 @@ import Faq from './pages/faq'
 import Help from './pages/help'
 import Tutorial from './pages/tutorial'
 import AboutMarlowe from './pages/about-marlowe'
+import Splash from './pages/splash'
 import Admin from './pages/admin'
 import AdminObservability from './pages/admin-observability'
 import Login from './pages/login'
 
 function App() {
   return (
-    <Routes>
+    <>
+      <SplashOverlay />
+      <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="knowledge-base" element={<KnowledgeBase />} />
@@ -33,12 +37,14 @@ function App() {
         <Route path="faq" element={<Faq />} />
         <Route path="help" element={<Help />} />
         <Route path="tutorial" element={<Tutorial />} />
+        <Route path="splash" element={<Splash />} />
         <Route path="about-marlowe" element={<AboutMarlowe />} />
         <Route path="admin" element={<Admin />} />
         <Route path="admin/observability" element={<AdminObservability />} />
       </Route>
       <Route path="/login" element={<Login />} />
     </Routes>
+    </>
   )
 }
 

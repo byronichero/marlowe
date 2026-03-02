@@ -22,6 +22,7 @@ import {
   Monitor,
   GraduationCap,
   Settings,
+  PlayCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +31,7 @@ const navigationSections = [
     label: 'Core',
     items: [
       { name: 'Home', href: '/', icon: Home },
+      { name: 'Watch Intro', href: '/splash', icon: PlayCircle },
       { name: 'Getting Started', href: '/tutorial', icon: GraduationCap },
     ],
   },

@@ -20,6 +20,11 @@ const helpSections: Array<{
     description: 'Learn how to set up and use Marlowe',
     items: [
       {
+        title: 'Watch the Marlowe introduction',
+        description: 'View a short video overview of Marlowe. You can turn off the splash on first visit via "Don\'t show again".',
+        href: '/splash',
+      },
+      {
         title: 'Create your first assessment',
         description:
           'Go to GRC & Gap Analysis, add a framework (e.g. ISO 42001 or NIST 800-53), upload evidence, and run a gap analysis to identify compliance gaps.',
