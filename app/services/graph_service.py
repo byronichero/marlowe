@@ -23,11 +23,13 @@ def get_neo4j_driver():
 async def get_graph(
     framework_id: int | None = None,
     fedramp_baseline: str | None = None,
+    family: str | None = None,
 ) -> GraphResponse:
     """
     Query Neo4j for nodes (frameworks, requirements, assessments) and edges.
     Returns data suitable for knowledge-graph visualization.
     When framework_id and fedramp_baseline are set, filter to NIST controls in that baseline.
+    When family is set, filter requirements to that control family (e.g. AC, AU) for NIST 800-53.
     """
     driver = get_neo4j_driver()
     nodes: list[GraphNode] = []
@@ -38,7 +40,10 @@ async def get_graph(
                 nodes, edges = await _build_full_graph(session)
             else:
                 nodes, edges = await _build_framework_graph(
-                    session, framework_id, fedramp_baseline=fedramp_baseline
+                    session,
+                    framework_id,
+                    fedramp_baseline=fedramp_baseline,
+                    family=family,
                 )
     except Exception as e:
         logger.warning("Neo4j get_graph failed: %s", e)
@@ -87,33 +92,54 @@ async def _build_full_graph(session: Any) -> tuple[list[GraphNode], list[GraphEd
     return nodes, edges
 
 
+def _family_filter_cypher(control_ids: list, family: str | None) -> tuple[str, dict]:
+    """Build WHERE clause and params for family filter. family_prefix = family + '-'."""
+    if family:
+        family_prefix = f"{family}-"
+        if control_ids:
+            return (
+                "WHERE r.identifier IN $control_ids AND (r.family = $family OR r.identifier STARTS WITH $family_prefix)",
+                {"control_ids": control_ids, "family": family, "family_prefix": family_prefix},
+            )
+        return (
+            "WHERE (r.family = $family OR r.identifier STARTS WITH $family_prefix)",
+            {"family": family, "family_prefix": family_prefix},
+        )
+    if control_ids:
+        return "WHERE r.identifier IN $control_ids", {"control_ids": control_ids}
+    return "", {}
+
+
 async def _build_framework_graph(
     session: Any,
     framework_id: int,
     fedramp_baseline: str | None = None,
+    family: str | None = None,
 ) -> tuple[list[GraphNode], list[GraphEdge]]:
-    """Return framework-only graph nodes and edges. Optionally filter by FedRAMP baseline."""
+    """Return framework-only graph nodes and edges. Optionally filter by FedRAMP baseline and/or family."""
     from app.data.fedramp_baselines import get_baseline_control_ids
 
     nodes: list[GraphNode] = []
     edges: list[GraphEdge] = []
     id_map: dict[str, str] = {}
     control_ids = get_baseline_control_ids(fedramp_baseline) if fedramp_baseline else []
+    req_where, req_params = _family_filter_cypher(control_ids, family)
+    fw_id = f"framework_{framework_id}"
+    base_params: dict = {"fw_id": fw_id, **req_params}
 
-    if control_ids:
-        # Filter requirements to baseline controls only
+    if control_ids or family:
+        # Filter requirements by baseline and/or family
         node_result = await session.run(
-            """
-            MATCH (f:Framework {id: $fw_id})
+            f"""
+            MATCH (f:Framework {{id: $fw_id}})
             MATCH (r:Requirement)-[:BELONGS_TO]->(f)
-            WHERE r.identifier IN $control_ids
+            {req_where}
             WITH f, collect(r) AS reqs
             UNWIND [f] + reqs AS n
             RETURN elementId(n) AS neo4j_id, labels(n)[0] AS label,
                    n.id AS custom_id, n.name AS name, n.identifier AS identifier
             """,
-            fw_id=f"framework_{framework_id}",
-            control_ids=control_ids,
+            **base_params,
         )
     else:
         node_result = await session.run(
@@ -125,7 +151,7 @@ async def _build_framework_graph(
             RETURN elementId(n) AS neo4j_id, labels(n)[0] AS label,
                    n.id AS custom_id, n.name AS name, n.identifier AS identifier
             """,
-            fw_id=f"framework_{framework_id}",
+            fw_id=fw_id,
         )
     seen_nids: set[str] = set()
     async for record in node_result:
@@ -139,15 +165,14 @@ async def _build_framework_graph(
         seen_nids.add(nid)
         id_map[neo4j_id] = nid
         nodes.append(GraphNode(id=nid, label=str(name), type=lbl, properties={"name": name}))
-    if control_ids:
+    if control_ids or family:
         edge_result = await session.run(
-            """
-            MATCH (r:Requirement)-[rel:BELONGS_TO]->(f:Framework {id: $fw_id})
-            WHERE r.identifier IN $control_ids
+            f"""
+            MATCH (r:Requirement)-[rel:BELONGS_TO]->(f:Framework {{id: $fw_id}})
+            {req_where}
             RETURN elementId(r) AS src, elementId(f) AS tgt, type(rel) AS rel
             """,
-            fw_id=f"framework_{framework_id}",
-            control_ids=control_ids,
+            **base_params,
         )
     else:
         edge_result = await session.run(
@@ -155,7 +180,7 @@ async def _build_framework_graph(
             MATCH (r:Requirement)-[rel:BELONGS_TO]->(f:Framework {id: $fw_id})
             RETURN elementId(r) AS src, elementId(f) AS tgt, type(rel) AS rel
             """,
-            fw_id=f"framework_{framework_id}",
+            fw_id=fw_id,
         )
     async for record in edge_result:
         src = id_map.get(record["src"], record["src"])
@@ -169,25 +194,23 @@ async def _build_framework_graph(
                 )
             )
     # Include Evidence nodes and EVIDENCES edges for this framework
-    if control_ids:
+    if control_ids or family:
         ev_node_result = await session.run(
-            """
-            MATCH (e:Evidence)-[:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {id: $fw_id})
-            WHERE r.identifier IN $control_ids
+            f"""
+            MATCH (e:Evidence)-[:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {{id: $fw_id}})
+            {req_where}
             RETURN elementId(e) AS neo4j_id, labels(e)[0] AS label,
                    e.id AS custom_id, e.name AS name, e.identifier AS identifier
             """,
-            fw_id=f"framework_{framework_id}",
-            control_ids=control_ids,
+            **base_params,
         )
         ev_edge_result = await session.run(
-            """
-            MATCH (e:Evidence)-[rel:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {id: $fw_id})
-            WHERE r.identifier IN $control_ids
+            f"""
+            MATCH (e:Evidence)-[rel:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {{id: $fw_id}})
+            {req_where}
             RETURN elementId(e) AS src, elementId(r) AS tgt, type(rel) AS rel
             """,
-            fw_id=f"framework_{framework_id}",
-            control_ids=control_ids,
+            **base_params,
         )
     else:
         ev_node_result = await session.run(
@@ -196,14 +219,14 @@ async def _build_framework_graph(
             RETURN elementId(e) AS neo4j_id, labels(e)[0] AS label,
                    e.id AS custom_id, e.name AS name, e.identifier AS identifier
             """,
-            fw_id=f"framework_{framework_id}",
+            fw_id=fw_id,
         )
         ev_edge_result = await session.run(
             """
             MATCH (e:Evidence)-[rel:EVIDENCES]->(r:Requirement)-[:BELONGS_TO]->(f:Framework {id: $fw_id})
             RETURN elementId(e) AS src, elementId(r) AS tgt, type(rel) AS rel
             """,
-            fw_id=f"framework_{framework_id}",
+            fw_id=fw_id,
         )
     async for record in ev_node_result:
         neo4j_id = record["neo4j_id"] or ""
@@ -233,6 +256,7 @@ async def _build_framework_graph(
 async def get_graph_stats(
     framework_id: int | None = None,
     fedramp_baseline: str | None = None,
+    family: str | None = None,
 ) -> GraphStats:
     """Return aggregate graph statistics for UI telemetry cards."""
     driver = get_neo4j_driver()
@@ -246,10 +270,16 @@ async def get_graph_stats(
                 total_relationships = await _fetch_relationship_count(session)
             else:
                 node_counts, total_nodes = await _fetch_framework_node_counts(
-                    session, framework_id, fedramp_baseline=fedramp_baseline
+                    session,
+                    framework_id,
+                    fedramp_baseline=fedramp_baseline,
+                    family=family,
                 )
                 total_relationships = await _fetch_framework_relationship_count(
-                    session, framework_id, fedramp_baseline=fedramp_baseline
+                    session,
+                    framework_id,
+                    fedramp_baseline=fedramp_baseline,
+                    family=family,
                 )
     except Exception as e:
         logger.warning("Neo4j get_graph_stats failed: %s", e)
@@ -295,25 +325,29 @@ async def _fetch_framework_node_counts(
     session: Any,
     framework_id: int,
     fedramp_baseline: str | None = None,
+    family: str | None = None,
 ) -> tuple[dict[str, int], int]:
     from app.data.fedramp_baselines import get_baseline_control_ids
 
     node_counts: dict[str, int] = {}
     total_nodes = 0
     control_ids = get_baseline_control_ids(fedramp_baseline) if fedramp_baseline else []
-    if control_ids:
+    req_where, req_params = _family_filter_cypher(control_ids, family)
+    fw_id = f"framework_{framework_id}"
+    base_params: dict = {"fw_id": fw_id, **req_params}
+
+    if control_ids or family:
         node_result = await session.run(
-            """
-            MATCH (f:Framework {id: $fw_id})
-            OPTIONAL MATCH (r:Requirement)-[:BELONGS_TO]->(f)
-            WHERE r.identifier IN $control_ids
+            f"""
+            MATCH (f:Framework {{id: $fw_id}})
+            MATCH (r:Requirement)-[:BELONGS_TO]->(f)
+            {req_where}
             WITH f, collect(r) AS reqs
-            UNWIND [f] + [x IN reqs WHERE x IS NOT NULL] AS n
+            UNWIND [f] + reqs AS n
             WITH labels(n)[0] AS lbl
             RETURN lbl AS label, count(*) AS count
             """,
-            fw_id=f"framework_{framework_id}",
-            control_ids=control_ids,
+            **base_params,
         )
     else:
         node_result = await session.run(
@@ -325,7 +359,7 @@ async def _fetch_framework_node_counts(
             WITH labels(n)[0] AS lbl
             RETURN lbl AS label, count(*) AS count
             """,
-            fw_id=f"framework_{framework_id}",
+            fw_id=fw_id,
         )
     async for record in node_result:
         label = (record["label"] or "node").lower()
@@ -342,20 +376,26 @@ async def _fetch_relationship_count(session: Any) -> int:
 
 
 async def _fetch_framework_relationship_count(
-    session: Any, framework_id: int, fedramp_baseline: str | None = None
+    session: Any,
+    framework_id: int,
+    fedramp_baseline: str | None = None,
+    family: str | None = None,
 ) -> int:
     from app.data.fedramp_baselines import get_baseline_control_ids
 
     control_ids = get_baseline_control_ids(fedramp_baseline) if fedramp_baseline else []
-    if control_ids:
+    req_where, req_params = _family_filter_cypher(control_ids, family)
+    fw_id = f"framework_{framework_id}"
+    base_params: dict = {"fw_id": fw_id, **req_params}
+
+    if control_ids or family:
         rel_result = await session.run(
-            """
-            MATCH (r:Requirement)-[rel:BELONGS_TO]->(f:Framework {id: $fw_id})
-            WHERE r.identifier IN $control_ids
+            f"""
+            MATCH (r:Requirement)-[rel:BELONGS_TO]->(f:Framework {{id: $fw_id}})
+            {req_where}
             RETURN count(rel) AS count
             """,
-            fw_id=f"framework_{framework_id}",
-            control_ids=control_ids,
+            **base_params,
         )
     else:
         rel_result = await session.run(
@@ -363,7 +403,7 @@ async def _fetch_framework_relationship_count(
             MATCH (r:Requirement)-[rel:BELONGS_TO]->(f:Framework {id: $fw_id})
             RETURN count(rel) AS count
             """,
-            fw_id=f"framework_{framework_id}",
+            fw_id=fw_id,
         )
     rel_record = await rel_result.single()
     return int(rel_record["count"] or 0) if rel_record else 0

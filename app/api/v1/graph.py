@@ -18,10 +18,15 @@ async def get_knowledge_graph(
     fedramp_baseline: str | None = Query(
         None, description="FedRAMP baseline: low, moderate, high (NIST 800-53 only)"
     ),
+    family: str | None = Query(
+        None, description="Control family filter (e.g. AC, AU) for NIST 800-53"
+    ),
 ) -> GraphResponse:
     """Return graph nodes and edges for knowledge-graph visualization."""
     return await get_graph(
-        framework_id=framework_id, fedramp_baseline=fedramp_baseline
+        framework_id=framework_id,
+        fedramp_baseline=fedramp_baseline,
+        family=family,
     )
 
 
@@ -31,10 +36,15 @@ async def get_knowledge_graph_stats(
     fedramp_baseline: str | None = Query(
         None, description="FedRAMP baseline: low, moderate, high (NIST 800-53 only)"
     ),
+    family: str | None = Query(
+        None, description="Control family filter (e.g. AC, AU) for NIST 800-53"
+    ),
 ) -> GraphStats:
     """Return aggregate graph statistics for UI telemetry cards."""
     return await get_graph_stats(
-        framework_id=framework_id, fedramp_baseline=fedramp_baseline
+        framework_id=framework_id,
+        fedramp_baseline=fedramp_baseline,
+        family=family,
     )
 
 

@@ -64,6 +64,30 @@ interface CrosswalkResponse {
 
 const LAST_GAP_ANALYSIS_KEY = 'lastGapAnalysisFrameworkId'
 
+/** NIST 800-53 Rev 5 control families for filter dropdown */
+const NIST_80053_FAMILIES: { code: string; label: string }[] = [
+  { code: 'AC', label: 'AC - Access Control' },
+  { code: 'AT', label: 'AT - Awareness and Training' },
+  { code: 'AU', label: 'AU - Audit and Accountability' },
+  { code: 'CA', label: 'CA - Assessment, Authorization, and Monitoring' },
+  { code: 'CM', label: 'CM - Configuration Management' },
+  { code: 'CP', label: 'CP - Contingency Planning' },
+  { code: 'IA', label: 'IA - Identification and Authentication' },
+  { code: 'IR', label: 'IR - Incident Response' },
+  { code: 'MA', label: 'MA - Maintenance' },
+  { code: 'MP', label: 'MP - Media Protection' },
+  { code: 'PE', label: 'PE - Physical and Environmental Protection' },
+  { code: 'PL', label: 'PL - Planning' },
+  { code: 'PM', label: 'PM - Program Management' },
+  { code: 'PS', label: 'PS - Personnel Security' },
+  { code: 'PT', label: 'PT - PII Processing and Transparency' },
+  { code: 'RA', label: 'RA - Risk Assessment' },
+  { code: 'SA', label: 'SA - System and Services Acquisition' },
+  { code: 'SC', label: 'SC - System and Communications Protection' },
+  { code: 'SI', label: 'SI - System and Information Integrity' },
+  { code: 'SR', label: 'SR - Supply Chain Risk Management' },
+]
+
 const FEDRAMP_BASELINE_INFO: Record<
   string,
   { level: number; label: string; count: number; color: { active: string; inactive: string } }
@@ -130,6 +154,7 @@ export default function KnowledgeGraph() {
     : null
   const [graphFrameworkId, setGraphFrameworkId] = useState<number | ''>('')
   const [fedrampBaseline, setFedrampBaseline] = useState<string>('')
+  const [graphFamily, setGraphFamily] = useState<string>('')
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncSuccess, setSyncSuccess] = useState<string | null>(null)
   const [graphError, setGraphError] = useState<string | null>(null)
@@ -142,15 +167,18 @@ export default function KnowledgeGraph() {
   async function loadGraph(
     selectedFrameworkId?: number | '',
     baseline?: string | '',
+    family?: string | '',
     signal?: AbortSignal
   ) {
     setIsLoadingGraph(true)
     try {
       const frameworkId = typeof selectedFrameworkId === 'number' ? selectedFrameworkId : undefined
       const bl = baseline ?? fedrampBaseline
+      const fam = family ?? graphFamily
       const data = (await api.getGraph(
         frameworkId,
         bl || undefined,
+        fam || undefined,
         signal
       )) as unknown as GraphApiResponse
       setHasGraphData((data?.nodes?.length ?? 0) > 0)
@@ -242,14 +270,16 @@ export default function KnowledgeGraph() {
   async function loadGraphMeta(
     selectedFrameworkId?: number | '',
     baseline?: string | '',
+    family?: string | '',
     signal?: AbortSignal
   ) {
     setIsLoadingStats(true)
     try {
       const frameworkId = typeof selectedFrameworkId === 'number' ? selectedFrameworkId : undefined
       const bl = baseline ?? fedrampBaseline
+      const fam = family ?? graphFamily
       const [stats, health] = await Promise.all([
-        api.getGraphStats(frameworkId, bl || undefined, signal),
+        api.getGraphStats(frameworkId, bl || undefined, fam || undefined, signal),
         api.getGraphHealth(),
       ])
       setGraphStats(stats)
@@ -269,8 +299,8 @@ export default function KnowledgeGraph() {
     setIsSyncing(true)
     try {
       const result = await api.syncGraph()
-      await loadGraph(graphFrameworkId, fedrampBaseline)
-      await loadGraphMeta(graphFrameworkId, fedrampBaseline)
+      await loadGraph(graphFrameworkId, fedrampBaseline, graphFamily)
+      await loadGraphMeta(graphFrameworkId, fedrampBaseline, graphFamily)
       const f = result.frameworks ?? 0
       const r = result.requirements ?? 0
       const e = result.evidence ?? 0
@@ -310,7 +340,8 @@ export default function KnowledgeGraph() {
       if (networkRef.current && result.mappings.length > 0) {
         const existing = (await api.getGraph(
           typeof graphFrameworkId === 'number' ? graphFrameworkId : undefined,
-          fedrampBaseline || undefined
+          fedrampBaseline || undefined,
+          graphFamily || undefined
         )) as unknown as GraphApiResponse
         const crosswalkEdges = result.mappings.map((m, i) => ({
           from: `requirement_${m.requirement_a.id}`,
@@ -375,6 +406,7 @@ export default function KnowledgeGraph() {
     ) {
       hasSetDefaultFramework.current = true
       setGraphFrameworkId(nist.id)
+      setFedrampBaseline('low')
     }
   }, [frameworks, searchParams])
 
@@ -383,9 +415,9 @@ export default function KnowledgeGraph() {
     graphAbortRef.current = new AbortController()
     const signal = graphAbortRef.current.signal
 
-    loadGraph(graphFrameworkId, fedrampBaseline, signal)
-    loadGraphMeta(graphFrameworkId, fedrampBaseline, signal)
-  }, [graphFrameworkId, fedrampBaseline])
+    loadGraph(graphFrameworkId, fedrampBaseline, graphFamily, signal)
+    loadGraphMeta(graphFrameworkId, fedrampBaseline, graphFamily, signal)
+  }, [graphFrameworkId, fedrampBaseline, graphFamily])
 
   useEffect(() => {
     return () => {
@@ -400,7 +432,7 @@ export default function KnowledgeGraph() {
   }, [expandClustersOnClick])
 
   useEffect(() => {
-    if (hasGraphData) loadGraph(graphFrameworkId, fedrampBaseline)
+    if (hasGraphData) loadGraph(graphFrameworkId, fedrampBaseline, graphFamily)
   }, [showLabelsOnHover])
 
   function handleResetView() {
@@ -411,7 +443,10 @@ export default function KnowledgeGraph() {
     if (!lastGapFramework) return
     setGraphFrameworkId(lastGapFramework.id)
     setSearchParams({ framework_id: String(lastGapFramework.id) })
-    if (lastGapFramework.id !== nistFramework?.id) setFedrampBaseline('')
+    if (lastGapFramework.id !== nistFramework?.id) {
+      setFedrampBaseline('')
+      setGraphFamily('')
+    }
   }
 
   return (
@@ -508,7 +543,10 @@ export default function KnowledgeGraph() {
                   onChange={(e) => {
                     const v = e.target.value ? Number(e.target.value) : ''
                     setGraphFrameworkId(v)
-                    if (!v || v !== nistFramework?.id) setFedrampBaseline('')
+                    if (!v || v !== nistFramework?.id) {
+                      setFedrampBaseline('')
+                      setGraphFamily('')
+                    }
                   }}
                 >
                   <option value="">All frameworks</option>
@@ -519,6 +557,25 @@ export default function KnowledgeGraph() {
                   ))}
                 </Select>
               </div>
+              {nistFramework && graphFrameworkId === nistFramework.id && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="graph-family" className="text-muted-foreground text-sm">
+                    Family
+                  </label>
+                  <Select
+                    id="graph-family"
+                    value={graphFamily}
+                    onChange={(e) => setGraphFamily(e.target.value)}
+                  >
+                    <option value="">All families</option>
+                    {NIST_80053_FAMILIES.map((f) => (
+                      <option key={f.code} value={f.code}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
               {nistFramework && (
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">

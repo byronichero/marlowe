@@ -235,19 +235,31 @@ export const api = {
     ),
 
   // Knowledge graph (optional signal for abort/cancel)
-  getGraph: (frameworkId?: number, fedrampBaseline?: string, signal?: AbortSignal) => {
+  getGraph: (
+    frameworkId?: number,
+    fedrampBaseline?: string,
+    family?: string,
+    signal?: AbortSignal
+  ) => {
     const params = new URLSearchParams()
     if (frameworkId) params.set('framework_id', String(frameworkId))
     if (fedrampBaseline) params.set('fedramp_baseline', fedrampBaseline)
+    if (family) params.set('family', family)
     return fetchAPI<GraphData>(
       params.toString() ? `graph?${params}` : 'graph',
       signal ? { signal } : undefined
     )
   },
-  getGraphStats: (frameworkId?: number, fedrampBaseline?: string, signal?: AbortSignal) => {
+  getGraphStats: (
+    frameworkId?: number,
+    fedrampBaseline?: string,
+    family?: string,
+    signal?: AbortSignal
+  ) => {
     const params = new URLSearchParams()
     if (frameworkId) params.set('framework_id', String(frameworkId))
     if (fedrampBaseline) params.set('fedramp_baseline', fedrampBaseline)
+    if (family) params.set('family', family)
     return fetchAPI<GraphStats>(
       params.toString() ? `graph/stats?${params}` : 'graph/stats',
       signal ? { signal } : undefined
