@@ -2,6 +2,8 @@
 TODO.md
 LICENSE-TODO.md
 LINKEDIN_POST.md
+docs/PRD-Marlowe-Scaffold.md
+docs/global-rules.md
 
 # Env and secrets
 .env
@@ -15,6 +17,8 @@ venv/
 # Build and IDE
 dist/
 build/
+node_modules/
+titus.ds/
 .ruff_cache/
 .pytest_cache/
 .coverage
