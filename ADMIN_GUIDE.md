@@ -175,6 +175,7 @@ Before sharing a deployment or backup, clear Qdrant if it contains licensed cont
 
 - Navigate to **AI RMF Taxonomy** (`/taxonomy`)
 - Click **Load Taxonomy** to seed 150 trustworthiness properties
+- **Required files:** `docs/taxonomy-ai.md` and `docs/taxonomy-ai-clean.json` must be present; do not delete them
 - Entry-table assessment with maturity scoring (0–5)
 - Bar charts show maturity by stage and characteristic
 

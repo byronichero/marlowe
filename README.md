@@ -175,6 +175,15 @@ Licensed or copyrighted documents (e.g. ISO standards) must **not** be committed
 - **Public repo:** Only open-access content in `docs/` is committed.
 - **Clearing Qdrant:** Before sharing a deployment or backup, clear the vector store: `DELETE /api/v1/documents/collection` or `docker compose down -v` to reset volumes.
 
+## Required docs (do not delete)
+
+The following files are required for the NIST AI RMF Trustworthiness Taxonomy seed. **Do not delete them**; removing them will break the taxonomy seeding feature (Assessments → Load NIST AI RMF Taxonomy).
+
+- `docs/taxonomy-ai.md` – Source markdown for the trustworthiness taxonomy
+- `docs/taxonomy-ai-clean.json` – Parsed taxonomy (used if present; falls back to `taxonomy-ai.md`)
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for full details.
+
 ## License
 
 Marlowe is released under the [Apache License 2.0](LICENSE). See [TRADEMARK](TRADEMARK) for use of the name.

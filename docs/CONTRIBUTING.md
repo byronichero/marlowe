@@ -28,4 +28,13 @@ Licensed or copyrighted documents (e.g. ISO standards, paid frameworks) **must n
 
 If you have ingested licensed content into Qdrant and plan to share a backup or deployment, clear the vector store first. See the [README](../README.md#licensed-documents-and-qdrant) for instructions.
 
+## Required documents (do not delete)
+
+The following files are required for the NIST AI RMF Trustworthiness Taxonomy seed. **Do not delete them**; removing them will break the taxonomy seeding feature.
+
+- `docs/taxonomy-ai.md` – Source markdown for the trustworthiness taxonomy
+- `docs/taxonomy-ai-clean.json` – Parsed taxonomy (used if present; falls back to `taxonomy-ai.md`)
+
+These files ship with the repo and must remain in place for the taxonomy seed (Assessments → Load NIST AI RMF Taxonomy, or `POST /api/v1/nist/taxonomy/seed`) to work.
+
 Marlowe is a trademark of GallowGlass AI.

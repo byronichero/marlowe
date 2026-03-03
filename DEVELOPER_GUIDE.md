@@ -421,6 +421,7 @@ python -m app.scripts.seed_nist_80053 --replace
 - Run `pytest` before committing
 - See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for license and document handling
 - Do not commit licensed documents; use `docs/licensed/` (gitignored)
+- **Do not delete** `docs/taxonomy-ai.md` or `docs/taxonomy-ai-clean.json`—they are required for the NIST AI RMF taxonomy seed
 
 ---
 
