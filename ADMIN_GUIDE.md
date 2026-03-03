@@ -1,7 +1,7 @@
 # Marlowe - Administrator's Guide
 
 **Document Version**: 1.0  
-**Date**: February 2025  
+**Date**: March 2026  
 **Audience**: System Administrators, Operations Staff, Support Personnel
 
 ---
@@ -439,4 +439,4 @@ marlowe health --json
 
 **Marlowe is a trademark of GallowGlass AI.**
 
-**Last Updated**: February 2025
+**Last Updated**: March 2026

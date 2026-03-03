@@ -1,7 +1,7 @@
 # Marlowe - Developer's Guide
 
 **Document Version**: 1.0  
-**Date**: February 2025  
+**Date**: March 2026  
 **Audience**: Software Developers, Contributors
 
 ---
@@ -40,7 +40,6 @@ This Developer's Guide helps engineers understand, extend, and contribute to Mar
 
 ### Related Documents
 
-- [DEVELOPERS.md](docs/DEVELOPERS.md) – Short reference
 - [CONTRIBUTING.md](docs/CONTRIBUTING.md) – License and document handling
 - [TECHNICAL_BRIEF.md](TECHNICAL_BRIEF.md) – Infrastructure and deployment
 - [ADMIN_GUIDE.md](ADMIN_GUIDE.md) – Operations guide
@@ -427,4 +426,4 @@ python -m app.scripts.seed_nist_80053 --replace
 
 **Marlowe is a trademark of GallowGlass AI.**
 
-**Last Updated**: February 2025
+**Last Updated**: March 2026

@@ -1,7 +1,7 @@
 # Marlowe - Technical Brief
 
 **Document Version**: 1.0  
-**Date**: February 2025  
+**Date**: March 2026  
 **Audience**: IT Staff, SRE, DevOps, Infrastructure Engineers
 
 ---
@@ -356,4 +356,4 @@ docker compose up -d
 
 **Marlowe is a trademark of GallowGlass AI.**
 
-**Last Updated**: February 2025
+**Last Updated**: March 2026

@@ -2,6 +2,12 @@
 
 AI application for **AI governance**, **responsible AI**, **privacy**, and **global AI regulations**. Supports compliance, assessments, and evidence across frameworks (e.g. EU AI Act, GDPR, NIST AI RMF)—framework-agnostic.
 
+**For GRC, Privacy, and Infosec Professionals**
+
+Marlowe helps you manage AI governance, compliance, and privacy in one place. Use it to run AI impact assessments (e.g., EU AI Act, NIST AI RMF), map controls across frameworks (ISO 27001, SOC 2, NIST 800-53, FedRAMP), and collect and organize evidence for audits. Upload your policy and control documents and use the knowledge graph and AI chat to see how requirements relate, find gaps, and quickly answer questions like *"What evidence do I need?"* or *"Where does this control sit across our frameworks?"*.
+
+**Data protection and privacy.** Marlowe runs entirely on your infrastructure. Your documents, prompts, and embeddings never leave your environment. With Ollama or vLLM on-prem, you avoid sending sensitive data to third‑party AI APIs. That makes it suitable for regulated industries and organizations with strict data residency and privacy obligations.
+
 The app is named after [Christopher Marlowe](https://en.wikipedia.org/wiki/Christopher_Marlowe)— Elizabethan playwright, poet, and contemporary of Shakespeare—whose work combined sharp structure, craft, and a touch of intrigue.
 
 ## Stack
@@ -159,7 +165,7 @@ The Admin page (Admin → Dashboard) shows the same service status and copyable 
 - `frontend-old/` – Legacy static HTML/CSS/JS (SB Admin 2 style), not used by default
 - `docs/` – Reference documents (ingestible into Qdrant)
 
-See [PRD.md](PRD.md) for product and architecture. See [docs/DEVELOPERS.md](docs/DEVELOPERS.md) for the developer's guide. See [CHANGELOG.md](CHANGELOG.md) for release notes.
+See [PRD.md](PRD.md) for product and architecture. See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for the developer's guide. See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## Licensed documents and Qdrant
 
