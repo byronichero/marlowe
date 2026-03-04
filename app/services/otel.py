@@ -9,7 +9,6 @@ from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.instrumentation.langchain import LangchainInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -34,6 +33,12 @@ def init_otel(app: FastAPI) -> None:
         trace.set_tracer_provider(provider)
         FastAPIInstrumentor.instrument_app(app)
         HTTPXClientInstrumentor().instrument()
-        LangchainInstrumentor().instrument()
+        # Langchain instrumentation can fail due to opentelemetry-semantic-conventions-ai version mismatch
+        try:
+            from opentelemetry.instrumentation.langchain import LangchainInstrumentor
+
+            LangchainInstrumentor().instrument()
+        except ImportError as e:
+            logger.warning("LangChain instrumentation skipped (version mismatch): %s", e)
     except Exception as exc:
         logger.warning("OpenTelemetry init failed: %s", exc)

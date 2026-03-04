@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # NIST auto-seed: load NIST 800-53 catalog on startup if not present (set false to disable)
     nist_auto_seed: bool = True
 
+    # Graph: sync Postgres → Neo4j on startup to repair out-of-sync state (e.g. Neo4j reset)
+    graph_auto_sync_on_startup: bool = True
+
     # Docs ingestion: path to folder to ingest into Qdrant (relative to project root or absolute)
     docs_path: str = "docs"
     # Embedding model and dimension (nomic-embed-text = 768)

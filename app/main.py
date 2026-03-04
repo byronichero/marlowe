@@ -13,7 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.agents.rag_agent import graph, graph_free
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.database import init_db
+from app.core.database import async_session_factory, init_db
+from app.services.graph_sync import sync_all_frameworks_and_requirements
 from app.services.nist_seed_service import ensure_nist_seeded
 from app.services.qdrant_service import ensure_collection
 from app.services.otel import init_otel
@@ -44,10 +45,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning("Could not ensure Qdrant collection (will retry on first upload): %s", e)
     # Auto-seed NIST 800-53 in background if not present (does not block startup)
+    nist_task = None
     if settings.nist_auto_seed:
-        task = asyncio.create_task(ensure_nist_seeded())
-        app.state.nist_seed_task = task  # keep reference to prevent gc
+        nist_task = asyncio.create_task(ensure_nist_seeded())
+        app.state.nist_seed_task = nist_task  # keep reference to prevent gc
         logger.info("NIST auto-seed enabled: will load catalog if not present")
+
+    # Sync Postgres → Neo4j on startup (after NIST seed if enabled) to repair out-of-sync state
+    if settings.graph_auto_sync_on_startup:
+
+        async def _run_graph_sync() -> None:
+            if nist_task is not None:
+                await nist_task
+            try:
+                async with async_session_factory() as db:
+                    counts = await sync_all_frameworks_and_requirements(db)
+                    logger.info(
+                        "Graph auto-sync: %d frameworks, %d requirements, %d evidence",
+                        counts["frameworks"],
+                        counts["requirements"],
+                        counts["evidence"],
+                    )
+            except Exception as e:
+                logger.warning("Graph auto-sync failed: %s", e)
+
+        sync_task = asyncio.create_task(_run_graph_sync())
+        app.state.graph_sync_task = sync_task
     yield
     # Optional: close Neo4j, Redis, Qdrant clients if held at app state
 

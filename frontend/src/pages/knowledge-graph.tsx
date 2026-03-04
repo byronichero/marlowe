@@ -164,6 +164,37 @@ export default function KnowledgeGraph() {
       f.slug?.includes('nist-800-53') || f.name?.toLowerCase().includes('nist 800-53')
   )
 
+  /** Taxonomy framework gets looser physics for better spread (star topology). */
+  function getPhysicsConfig(fwId: number | undefined) {
+    const selected = typeof fwId === 'number' ? frameworks.find((f) => f.id === fwId) : undefined
+    const isTaxonomy =
+      selected != null &&
+      (selected.slug?.includes('trustworthiness-taxonomy') ||
+        selected.name?.toLowerCase().includes('trustworthiness taxonomy'))
+    if (isTaxonomy) {
+      return {
+        enabled: true,
+        forceAtlas2Based: {
+          gravitationalConstant: -200,
+          centralGravity: 0.005,
+          springLength: 250,
+          springConstant: 0.04,
+        },
+        stabilization: { iterations: 200 },
+      }
+    }
+    return {
+      enabled: true,
+      forceAtlas2Based: {
+        gravitationalConstant: -50,
+        centralGravity: 0.01,
+        springLength: 150,
+        springConstant: 0.08,
+      },
+      stabilization: { iterations: 150 },
+    }
+  }
+
   async function loadGraph(
     selectedFrameworkId?: number | '',
     baseline?: string | '',
@@ -206,6 +237,7 @@ export default function KnowledgeGraph() {
         const visData = { nodes: visNodes, edges: visEdges }
 
         if (networkRef.current) {
+          networkRef.current.setOptions?.({ physics: getPhysicsConfig(frameworkId) })
           networkRef.current.setData(visData)
           clusterFrameworks(networkRef.current, data.nodes)
           // Re-fit view when data changes (e.g. FedRAMP filter)
@@ -225,16 +257,7 @@ export default function KnowledgeGraph() {
               arrows: { to: { enabled: true } },
               font: { size: 10, align: 'middle' },
             },
-            physics: {
-              enabled: true,
-              forceAtlas2Based: {
-                gravitationalConstant: -50,
-                centralGravity: 0.01,
-                springLength: 150,
-                springConstant: 0.08,
-              },
-              stabilization: { iterations: 150 },
-            },
+            physics: getPhysicsConfig(frameworkId),
             interaction: { hover: true, tooltipDelay: 200 },
           })
           networkRef.current = instance
