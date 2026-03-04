@@ -196,6 +196,23 @@ The following files are required for the NIST AI RMF Trustworthiness Taxonomy se
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for full details.
 
+## Built for AI
+
+<p align="center"><img src="frontend/public/fedora_logo.svg.png" width="48" alt="Fedora" /> <strong>Built on Fedora</strong></p>
+
+Marlowe was developed on a custom-built AI workstation:
+
+| Component | Specification |
+|-----------|---------------|
+| **OS** | Fedora Linux 42 (KDE Plasma, Wayland) |
+| **CPU** | AMD Ryzen 9 9950X (32 threads) |
+| **RAM** | 128 GiB |
+| **GPU** | NVIDIA GeForce RTX 4060 |
+
+The NVIDIA GPU is used exclusively for AI workloads via the [Fedora CUDA container](https://github.com/NVIDIA/nvidia-docker)—Ollama and other LLM inference run in the container for isolation and reproducibility. The host runs on AMD integrated graphics.
+
+*Local LLMs, vector databases, and the full stack run on this machine—no cloud required.*
+
 ## License
 
 Marlowe is released under the [Apache License 2.0](LICENSE). See [TRADEMARK](TRADEMARK) for use of the name.
