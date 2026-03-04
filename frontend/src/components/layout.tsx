@@ -185,17 +185,33 @@ export default function Layout() {
               {!isSidebarCollapsed && 'Login'}
             </Link>
             {!isSidebarCollapsed && (
-              <p className="px-3 pt-2 text-xs text-muted-foreground/80">
-                Marlowe is a trademark of GallowGlass AI.{' '}
-                <Link to="/about-marlowe" className="underline hover:text-muted-foreground">
-                  Who was Marlowe?
-                </Link>{' '}
-                ·{' '}
-                <Link to="/help" className="underline hover:text-muted-foreground">
-                  See Help
-                </Link>{' '}
-                for license and trademark information.
-              </p>
+              <div className="space-y-2 px-3 pt-2 text-xs text-muted-foreground/80">
+                <p>
+                  Marlowe is a trademark of GallowGlass AI.{' '}
+                  <Link to="/about-marlowe" className="underline hover:text-muted-foreground">
+                    Who was Marlowe?
+                  </Link>{' '}
+                  ·{' '}
+                  <Link to="/help" className="underline hover:text-muted-foreground">
+                    See Help
+                  </Link>{' '}
+                  for license and trademark information.
+                </p>
+                <a
+                  href="https://getfedora.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 hover:text-muted-foreground"
+                  title="Built on Fedora"
+                >
+                  <img
+                    src="/fedora_logo.svg.png"
+                    alt="Fedora"
+                    className="h-4 w-4 object-contain"
+                  />
+                  <span>Built on Fedora</span>
+                </a>
+              </div>
             )}
           </div>
         </div>

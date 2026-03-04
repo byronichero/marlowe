@@ -467,6 +467,21 @@ export default function AboutMarlowe() {
           >
             Wikipedia: Christopher Marlowe
           </a>
+          <span>·</span>
+          <a
+            href="https://getfedora.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 hover:text-foreground"
+            title="Built on Fedora"
+          >
+            <img
+              src="/fedora_logo.svg.png"
+              alt="Fedora"
+              className="h-5 w-5 object-contain"
+            />
+            <span>Built on Fedora</span>
+          </a>
         </div>
       </footer>
     </div>
