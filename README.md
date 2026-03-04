@@ -209,7 +209,7 @@ Marlowe was developed on a custom-built AI workstation:
 | **RAM** | 128 GiB |
 | **GPU** | NVIDIA GeForce RTX 4060 |
 
-The NVIDIA GPU is used exclusively for AI workloads via the [Fedora CUDA container](https://github.com/NVIDIA/nvidia-docker)—Ollama and other LLM inference run in the container for isolation and reproducibility. The host runs on AMD integrated graphics.
+The NVIDIA GPU is used exclusively for AI workloads via the [Fedora CUDA container](https://github.com/NVIDIA/nvidia-container-toolkit)—Ollama and other LLM inference run in the container for isolation and reproducibility. The host runs on AMD integrated graphics.
 
 *Local LLMs, vector databases, and the full stack run on this machine—no cloud required.*
 
