@@ -1,5 +1,7 @@
 # Marlowe 1.0
 
+<p align="center"><img src="frontend/public/marlowe.jpeg" width="120" alt="Marlowe" /></p>
+
 AI application for **AI governance**, **responsible AI**, **privacy**, and **global AI regulations**. Supports compliance, assessments, and evidence across frameworks (e.g. EU AI Act, GDPR, NIST AI RMF)—framework-agnostic.
 
 **For GRC, Privacy, and Infosec Professionals**
@@ -98,6 +100,16 @@ Catalog is fetched from [NIST OSCAL GitHub](https://github.com/usnistgov/oscal-c
 ## Knowledge graph (Neo4j)
 
 Frameworks and requirements are synced from Postgres to Neo4j when you create or update them via the API. For existing data, use **Sync from DB** on the Knowledge Graph page, or `POST /api/v1/graph/sync`. The graph UI (vis-network) shows frameworks and requirements and **BELONGS_TO** edges; pan and zoom to explore.
+
+## Enterprise Grafana observability
+
+Grafana (with Prometheus, Tempo, and the OTel collector) is available in the default Docker Compose stack for tracing and metrics. Access it at http://localhost:5017 (Admin → Observability in the UI).
+
+**Important:** The observability stack is **not tested** with default passwords and has general security considerations:
+
+- **Default credentials:** Grafana ships with `admin` / `admin`. Change these immediately for any non-local use.
+- **No authentication:** Prometheus, Tempo, and the OTel collector expose ports without auth in the default setup.
+- **Production use:** For production, use managed observability, restrict network access, configure TLS, and follow your organization's security policies. The included stack is intended for local development and testing only.
 
 ## LLM provider (Ollama or vLLM)
 
