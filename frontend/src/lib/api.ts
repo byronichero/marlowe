@@ -239,12 +239,14 @@ export const api = {
     frameworkId?: number,
     fedrampBaseline?: string,
     family?: string,
+    assessmentId?: number,
     signal?: AbortSignal
   ) => {
     const params = new URLSearchParams()
     if (frameworkId) params.set('framework_id', String(frameworkId))
     if (fedrampBaseline) params.set('fedramp_baseline', fedrampBaseline)
     if (family) params.set('family', family)
+    if (assessmentId) params.set('assessment_id', String(assessmentId))
     return fetchAPI<GraphData>(
       params.toString() ? `graph?${params}` : 'graph',
       signal ? { signal } : undefined

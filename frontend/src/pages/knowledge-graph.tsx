@@ -36,8 +36,12 @@ function clusterFrameworks(
   )
   frameworkLabels.forEach((label, frameworkId) => {
     instance.clusterByConnection?.(frameworkId, {
-      joinCondition: (nodeOptions: { group?: string; id?: string }) =>
-        nodeOptions.group === 'requirement' && nodeOptions.id !== frameworkId,
+      joinCondition: (nodeOptions: { group?: string; id?: string }) => {
+        const isRequirement =
+          nodeOptions.group === 'requirement' ||
+          (typeof nodeOptions.id === 'string' && nodeOptions.id.startsWith('requirement_'))
+        return isRequirement && nodeOptions.id !== frameworkId
+      },
       clusterNodeProperties: {
         id: `cluster_${frameworkId}`,
         label: `${label} requirements`,
@@ -87,6 +91,43 @@ const NIST_80053_FAMILIES: { code: string; label: string }[] = [
   { code: 'SI', label: 'SI - System and Information Integrity' },
   { code: 'SR', label: 'SR - Supply Chain Risk Management' },
 ]
+
+/** Color by maturity score (0–5) for assessment-enriched nodes */
+function getNodeColorByMaturity(maturityScore: number | null | undefined): { background: string; border: string } | undefined {
+  if (maturityScore == null) return undefined
+  const colors: Record<number, { background: string; border: string }> = {
+    0: { background: '#fecaca', border: '#dc2626' },
+    1: { background: '#fed7aa', border: '#ea580c' },
+    2: { background: '#fef08a', border: '#ca8a04' },
+    3: { background: '#bbf7d0', border: '#16a34a' },
+    4: { background: '#86efac', border: '#15803d' },
+    5: { background: '#22c55e', border: '#166534' },
+  }
+  return colors[maturityScore] ?? undefined
+}
+
+/** Color by status for assessment-enriched nodes */
+function getNodeColorByStatus(status: string | undefined): { background: string; border: string } | undefined {
+  if (!status) return undefined
+  const s = status.toLowerCase()
+  if (s === 'complete') return { background: '#bbf7d0', border: '#16a34a' }
+  if (s === 'in_progress') return { background: '#93c5fd', border: '#2563eb' }
+  if (s === 'not_applicable') return { background: '#e5e7eb', border: '#6b7280' }
+  if (s === 'pending') return { background: '#f3f4f6', border: '#9ca3af' }
+  return undefined
+}
+
+/** vis-network expects highlight/hover for consistent coloring; apply base color to all states */
+function toVisNodeColor(
+  color: { background: string; border: string } | undefined
+): { background: string; border: string; highlight: { background: string; border: string }; hover: { background: string; border: string } } | undefined {
+  if (!color) return undefined
+  return {
+    ...color,
+    highlight: color,
+    hover: color,
+  }
+}
 
 const FEDRAMP_BASELINE_INFO: Record<
   string,
@@ -141,6 +182,8 @@ export default function KnowledgeGraph() {
   const [graphHealth, setGraphHealth] = useState<GraphHealth | null>(null)
   const [isLoadingStats, setIsLoadingStats] = useState(true)
   const [searchParams, setSearchParams] = useSearchParams()
+  const assessmentIdParam = searchParams.get('assessment_id')
+  const assessmentIdFromUrl = assessmentIdParam ? Number(assessmentIdParam) : undefined
   const lastGapFrameworkId = (() => {
     try {
       const id = localStorage.getItem(LAST_GAP_ANALYSIS_KEY)
@@ -199,6 +242,7 @@ export default function KnowledgeGraph() {
     selectedFrameworkId?: number | '',
     baseline?: string | '',
     family?: string | '',
+    assessmentId?: number | '',
     signal?: AbortSignal
   ) {
     setIsLoadingGraph(true)
@@ -206,10 +250,12 @@ export default function KnowledgeGraph() {
       const frameworkId = typeof selectedFrameworkId === 'number' ? selectedFrameworkId : undefined
       const bl = baseline ?? fedrampBaseline
       const fam = family ?? graphFamily
+      const aid = typeof assessmentId === 'number' ? assessmentId : undefined
       const data = (await api.getGraph(
         frameworkId,
         bl || undefined,
         fam || undefined,
+        aid,
         signal
       )) as unknown as GraphApiResponse
       setHasGraphData((data?.nodes?.length ?? 0) > 0)
@@ -222,13 +268,26 @@ export default function KnowledgeGraph() {
             seen.add(n.id)
             return true
           })
-          .map((n) => ({
-            id: n.id,
-            label:
-              showLabelsOnHover && (n.type ?? '').toLowerCase() !== 'framework' ? '' : n.label,
-            group: n.type?.toLowerCase() ?? 'node',
-            title: n.label,
-          }))
+          .map((n) => {
+            const props = n.properties as { status?: string; maturity_score?: number } | undefined
+            const maturity = props?.maturity_score
+            const status = props?.status
+            const colorByMaturity = getNodeColorByMaturity(maturity)
+            const colorByStatus = getNodeColorByStatus(status)
+            const baseColor = colorByMaturity ?? colorByStatus
+            const color = toVisNodeColor(baseColor)
+            const titleParts = [n.label]
+            if (maturity != null) titleParts.push(`Maturity: ${maturity}/5`)
+            if (status) titleParts.push(`Status: ${status}`)
+            return {
+              id: n.id,
+              label:
+                showLabelsOnHover && (n.type ?? '').toLowerCase() !== 'framework' ? '' : n.label,
+              group: color ? undefined : (n.type?.toLowerCase() ?? 'node'),
+              title: titleParts.join(' · '),
+              ...(color && { color }),
+            }
+          })
         const visEdges = data.edges.map((e) => ({
           from: e.source,
           to: e.target,
@@ -276,7 +335,7 @@ export default function KnowledgeGraph() {
               visInstance.openCluster?.(selected)
             }
           })
-          visInstance.once?.('stabilizationIterationsDone', () => {
+          visInstance.on?.('stabilizationIterationsDone', () => {
             visInstance.setOptions?.({ physics: { enabled: false } })
           })
         }
@@ -322,7 +381,7 @@ export default function KnowledgeGraph() {
     setIsSyncing(true)
     try {
       const result = await api.syncGraph()
-      await loadGraph(graphFrameworkId, fedrampBaseline, graphFamily)
+      await loadGraph(graphFrameworkId, fedrampBaseline, graphFamily, assessmentIdFromUrl)
       await loadGraphMeta(graphFrameworkId, fedrampBaseline, graphFamily)
       const f = result.frameworks ?? 0
       const r = result.requirements ?? 0
@@ -364,7 +423,8 @@ export default function KnowledgeGraph() {
         const existing = (await api.getGraph(
           typeof graphFrameworkId === 'number' ? graphFrameworkId : undefined,
           fedrampBaseline || undefined,
-          graphFamily || undefined
+          graphFamily || undefined,
+          assessmentIdFromUrl
         )) as unknown as GraphApiResponse
         const crosswalkEdges = result.mappings.map((m, i) => ({
           from: `requirement_${m.requirement_a.id}`,
@@ -385,12 +445,21 @@ export default function KnowledgeGraph() {
             crosswalkSeen.add(n.id)
             return true
           })
-          .map((n) => ({
-            id: n.id,
-            label: n.label,
-            group: n.type?.toLowerCase(),
-            title: n.label,
-          }))
+          .map((n) => {
+            const props = n.properties as { status?: string; maturity_score?: number } | undefined
+            const baseColor = getNodeColorByMaturity(props?.maturity_score) ?? getNodeColorByStatus(props?.status)
+            const color = toVisNodeColor(baseColor)
+            const titleParts = [n.label]
+            if (props?.maturity_score != null) titleParts.push(`Maturity: ${props.maturity_score}/5`)
+            if (props?.status) titleParts.push(`Status: ${props.status}`)
+            return {
+              id: n.id,
+              label: n.label,
+              group: color ? undefined : (n.type?.toLowerCase() ?? 'node'),
+              title: titleParts.join(' · '),
+              ...(color && { color }),
+            }
+          })
         networkRef.current.setData({ nodes: visNodes, edges: visEdges })
       }
     } catch (err) {
@@ -438,9 +507,9 @@ export default function KnowledgeGraph() {
     graphAbortRef.current = new AbortController()
     const signal = graphAbortRef.current.signal
 
-    loadGraph(graphFrameworkId, fedrampBaseline, graphFamily, signal)
+    loadGraph(graphFrameworkId, fedrampBaseline, graphFamily, assessmentIdFromUrl, signal)
     loadGraphMeta(graphFrameworkId, fedrampBaseline, graphFamily, signal)
-  }, [graphFrameworkId, fedrampBaseline, graphFamily])
+  }, [graphFrameworkId, fedrampBaseline, graphFamily, assessmentIdFromUrl])
 
   useEffect(() => {
     return () => {
@@ -455,7 +524,7 @@ export default function KnowledgeGraph() {
   }, [expandClustersOnClick])
 
   useEffect(() => {
-    if (hasGraphData) loadGraph(graphFrameworkId, fedrampBaseline, graphFamily)
+    if (hasGraphData) loadGraph(graphFrameworkId, fedrampBaseline, graphFamily, assessmentIdFromUrl)
   }, [showLabelsOnHover])
 
   function handleResetView() {

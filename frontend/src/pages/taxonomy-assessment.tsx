@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { api } from '@/lib/api'
 import type { Assessment, Framework, RequirementAssessmentItem } from '@/types'
-import { Loader2, ArrowLeft, Filter, BookOpen } from 'lucide-react'
+import { Loader2, ArrowLeft, Filter, BookOpen, Network } from 'lucide-react'
 
 /** NIST AI RMF Playbook entry (from nist_ai_rmf_playbook.json). */
 interface PlaybookEntry {
@@ -250,6 +250,16 @@ export default function TaxonomyAssessment() {
             Standards Library
           </Button>
         </Link>
+        {framework && assessment && (
+          <Link
+            to={`/knowledge-graph?framework_id=${frameworkId}&assessment_id=${assessment.id}`}
+          >
+            <Button variant="outline" size="sm">
+              <Network className="mr-2 h-4 w-4" />
+              View in Knowledge Graph
+            </Button>
+          </Link>
+        )}
       </div>
 
       <Card>

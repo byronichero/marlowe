@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.database import get_db
 from app.schemas import GraphHealth, GraphResponse, GraphStats
 from app.services.crosswalk_service import generate_crosswalk
+from app.services.graph_enrichment import enrich_graph_with_assessments
 from app.services.graph_service import ensure_indexes, get_graph, get_graph_health, get_graph_stats
 from app.services.graph_sync import sync_all_frameworks_and_requirements
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,13 +22,22 @@ async def get_knowledge_graph(
     family: str | None = Query(
         None, description="Control family filter (e.g. AC, AU) for NIST 800-53"
     ),
+    assessment_id: int | None = Query(
+        None, description="Assessment ID to overlay status/maturity on requirement nodes"
+    ),
+    db: AsyncSession = Depends(get_db),
 ) -> GraphResponse:
     """Return graph nodes and edges for knowledge-graph visualization."""
-    return await get_graph(
+    response = await get_graph(
         framework_id=framework_id,
         fedramp_baseline=fedramp_baseline,
         family=family,
     )
+    if framework_id is not None:
+        response = await enrich_graph_with_assessments(
+            response, db, framework_id, assessment_id
+        )
+    return response
 
 
 @router.get("/stats", response_model=GraphStats)
