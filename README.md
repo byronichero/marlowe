@@ -177,7 +177,7 @@ The Admin page (Admin → Dashboard) shows the same service status and copyable 
 - `frontend-old/` – Legacy static HTML/CSS/JS (SB Admin 2 style), not used by default
 - `docs/` – Reference documents (ingestible into Qdrant)
 
-See [PRD.md](PRD.md) for product and architecture. See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for the developer's guide. See [CHANGELOG.md](CHANGELOG.md) for release notes.
+See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for the developer's guide. See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## Licensed documents and Qdrant
 
