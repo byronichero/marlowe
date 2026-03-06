@@ -97,6 +97,17 @@ NIST 800-53 Rev 5 is public domain. The app **auto-seeds** the official catalog 
 
 Catalog is fetched from [NIST OSCAL GitHub](https://github.com/usnistgov/oscal-content). Controls include base controls and enhancements with proper hierarchy (e.g. AC-2(1) under AC-2).
 
+## ISO/IEC 42001:2023 (licensed; document required)
+
+ISO/IEC 42001:2023 (AI management system) is a licensed standard. You need your own copy to seed requirements. Marlowe was tested with a licensed official copy of ISO/IEC 42001:2023.
+
+- **Add framework:** Assessments → Add framework → use the **ISO 42001** template (name: ISO/IEC 42001:2023, slug: iso-42001-2023), or create it manually.
+- **Place document:** Put the licensed PDF in `docs/licensed/`. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for details.
+- **Upload & extract:** Upload the standard as evidence to the framework, then run **Extract requirements**. Use **Annex A only** (38 controls; recommended) or **Full** (clauses 4–10 + Annex A).
+- **Canonical controls:** The app uses built-in ISO 42001 Annex A control identifiers and default titles; any missing controls are injected automatically during extraction.
+
+NIST 800-53 and ISO 42001 are common baselines—both can be loaded and used together for cross-framework gap analysis.
+
 ## Knowledge graph (Neo4j)
 
 Frameworks and requirements are synced from Postgres to Neo4j when you create or update them via the API. For existing data, use **Sync from DB** on the Knowledge Graph page, or `POST /api/v1/graph/sync`. The graph UI (vis-network) shows frameworks and requirements and **BELONGS_TO** edges; pan and zoom to explore.
@@ -196,9 +207,9 @@ The following files are required for the NIST AI RMF Trustworthiness Taxonomy se
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for full details.
 
-## Built for AI
+## Built on Fedora
 
-<p align="center"><img src="frontend/public/fedora_logo.svg.png" width="48" alt="Fedora" /> <strong>Built on Fedora</strong></p>
+<p align="center"><img src="frontend/public/fedora_logo.svg.png" width="48" alt="Fedora" /></p>
 
 Marlowe was developed on a custom-built AI workstation:
 
