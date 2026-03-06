@@ -207,9 +207,7 @@ The following files are required for the NIST AI RMF Trustworthiness Taxonomy se
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for full details.
 
-## Built on Fedora
-
-<p align="center"><img src="frontend/public/fedora_logo.svg.png" width="48" alt="Fedora" /></p>
+## <img src="frontend/public/fedora_logo.svg.png" width="32" alt="Fedora" style="vertical-align: middle;" /> Built on Fedora
 
 Marlowe was developed on a custom-built AI workstation:
 
